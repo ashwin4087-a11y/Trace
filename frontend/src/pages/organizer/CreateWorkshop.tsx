@@ -40,6 +40,10 @@ function combineDateTime(date: string, time: string) {
   return date && time ? `${date}T${time}` : "";
 }
 
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function CreateWorkshopPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(empty);
@@ -49,6 +53,10 @@ export function CreateWorkshopPage() {
   const durationHours = form.startDate && form.endDate
     ? Math.max(0, (new Date(form.endDate).getTime() - new Date(form.startDate).getTime()) / 3_600_000)
     : 0;
+  const invalidSchedule = Boolean(
+    (form.startDate && form.endDate && new Date(form.endDate) <= new Date(form.startDate)) ||
+    (form.registrationDeadline && form.startDate && new Date(form.registrationDeadline) > new Date(form.startDate)),
+  );
 
   const submitWorkshop = async (publish = false) => {
     setError("");
@@ -116,24 +124,30 @@ export function CreateWorkshopPage() {
             <Input label="Target Skills (comma-separated)" value={form.skills} onChange={(event) => set("skills", event.target.value)} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {([
-              ["startDate", "Start"],
-              ["endDate", "End"],
-              ["registrationDeadline", "Registration Deadline"],
+              ["startDate", "Start date and time"],
+              ["endDate", "End date and time"],
+              ["registrationDeadline", "Registration deadline"],
             ] as const).map(([key, label]) => (
-              <fieldset key={key} className="min-w-0">
-                <legend className="mb-1 block text-sm font-semibold">{label}</legend>
-                <div className="grid grid-cols-2 gap-2">
-                  <Input aria-label={`${label} date`} label="Date" type="date" value={datePart(form[key])} onChange={(event) => set(key, combineDateTime(event.target.value, timePart(form[key])))} required />
+              <fieldset key={key} className="min-w-0 rounded-lg border border-[#DFC1B0] bg-[#FFFAF6] p-3">
+                <legend className="px-1 text-sm font-semibold text-[#1A1412]">{label}</legend>
+                <div className="grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-3">
+                  <Input aria-label={`${label} date`} label="Date" type="date" min={key === "startDate" || key === "registrationDeadline" ? today() : datePart(form.startDate)} value={datePart(form[key])} onChange={(event) => set(key, combineDateTime(event.target.value, timePart(form[key])))} required />
                   <Input aria-label={`${label} time`} label="Time" type="time" value={timePart(form[key])} onChange={(event) => set(key, combineDateTime(datePart(form[key]), event.target.value))} required />
                 </div>
               </fieldset>
             ))}
           </div>
 
+          {invalidSchedule ? (
+            <p className="-mt-2 rounded-md border border-[#E6A6A6] bg-[#FFF1F1] px-3 py-2 text-xs text-[#9F2D2D]">
+              Check the schedule: the end must be after the start, and the registration deadline must be before the start.
+            </p>
+          ) : null}
+
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-            <Input label="Duration (Hours)" type="number" value={durationHours ? durationHours.toFixed(2) : ""} readOnly placeholder="Set start and end" />
+            <Input label="Duration (Hours)" type="number" value={durationHours ? durationHours.toFixed(2) : ""} readOnly placeholder="Auto-calculated" />
             <Input label="Seat Capacity" type="number" value={form.capacity} onChange={(event) => set("capacity", event.target.value)} />
             <Select label="Delivery Mode" value={form.mode} onChange={(event) => set("mode", event.target.value)}>
               <option value="ONLINE">Online Virtual</option>
@@ -158,10 +172,10 @@ export function CreateWorkshopPage() {
             <TraceButton type="button" variant="secondary" onClick={() => navigate("/organizer/workshops")}>
               Cancel
             </TraceButton>
-            <TraceButton type="submit" icon="save" disabled={submitting}>
+            <TraceButton type="submit" icon="save" disabled={submitting || invalidSchedule || !durationHours}>
               {submitting ? "Saving..." : "Save Draft Workshop"}
             </TraceButton>
-            <TraceButton type="button" icon="publish" disabled={submitting} onClick={() => void submitWorkshop(true)}>
+            <TraceButton type="button" icon="publish" disabled={submitting || invalidSchedule || !durationHours} onClick={() => void submitWorkshop(true)}>
               {submitting ? "Submitting..." : "Submit Workshop"}
             </TraceButton>
           </div>

@@ -1,7 +1,7 @@
 import type { NotificationType, Prisma } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { sendEmail } from "../../integrations/email/email.provider";
-import { certificateEmail, registrationEmail, sessionReminderEmail, workshopAlertEmail } from "../../integrations/email/email.templates";
+import { certificateEmail, registrationEmail, sessionReminderEmail } from "../../integrations/email/email.templates";
 import { scoreWorkshop } from "../../shared/utils/recommendations";
 import { getSettings } from "../settings/settings.service";
 
@@ -98,7 +98,6 @@ export async function notifyWorkshopPublished(workshopId: string) {
       },
     );
     if (scored.score < 15) continue;
-    const emailMessage = workshopAlertEmail(participant.firstName, workshop.title, workshop.id);
     await deliver({
       userId: participant.id,
       email: participant.email,
@@ -107,7 +106,6 @@ export async function notifyWorkshopPublished(workshopId: string) {
       title: workshop.title,
       body: scored.reasons.join(". ") || "A workshop matches your profile.",
       link: `/workshops/${workshop.id}`,
-      emailMessage,
       preference: participant.notificationPreference,
     });
     await prisma.recommendation.upsert({
@@ -125,7 +123,7 @@ export async function notifyWorkshopPublished(workshopId: string) {
   return { notified };
 }
 
-export async function notifyRegistration(userId: string, workshopTitle: string) {
+export async function notifyRegistration(userId: string, workshopTitle: string, workshopId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: { notificationPreference: true },
@@ -138,7 +136,7 @@ export async function notifyRegistration(userId: string, workshopTitle: string) 
     type: "REGISTRATION_CONFIRMED",
     title: `Registered: ${workshopTitle}`,
     body: `Your registration for ${workshopTitle} is confirmed.`,
-    emailMessage: registrationEmail(user.firstName, workshopTitle),
+    emailMessage: registrationEmail(user.firstName, workshopTitle, workshopId),
     preference: user.notificationPreference,
   });
 }

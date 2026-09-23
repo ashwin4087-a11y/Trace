@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { ErrorState } from "../../components/common/ErrorState";
 import { Input } from "../../components/common/Input";
@@ -11,6 +11,7 @@ import { errorText } from "../../lib/errors";
 
 export function LoginPage() {
   const { login } = useAuth();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,7 +25,7 @@ export function LoginPage() {
             event.preventDefault();
             setError("");
             try {
-              await login(email, password);
+              await login(email, password, searchParams.get("redirect") ?? undefined);
             } catch (caught) {
               setError(errorText(caught));
             }

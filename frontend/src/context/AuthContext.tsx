@@ -8,7 +8,7 @@ type AuthState = {
   loading: boolean;
   hasRole: (...roles: AuthUser["role"][]) => boolean;
   hasPermission: (permission: string) => boolean;
-  login: (email: string, password: string) => Promise<AuthUser>;
+  login: (email: string, password: string, redirect?: string) => Promise<AuthUser>;
   register: (input: {
     email: string;
     password: string;
@@ -49,10 +49,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return assignedRoles.some((role) => roles.includes(role));
       },
       hasPermission: (permission) => user?.permissions?.includes(permission) ?? false,
-      login: async (email, password) => {
+      login: async (email, password, redirect) => {
         const result = await authService.login(email, password);
         setUser(result.user);
-        navigate(homeForRole(result.user.role));
+        const destination = redirect?.startsWith("/") && !redirect.startsWith("//")
+          ? redirect
+          : homeForRole(result.user.role);
+        navigate(destination);
         return result.user;
       },
       register: async (input) => {

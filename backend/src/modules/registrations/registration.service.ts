@@ -97,23 +97,6 @@ export async function registerForWorkshop(userId: string, workshopId: string) {
       workshopTitle: registration.workshopTitle,
     });
     
-    // Trigger registration confirmation email
-    setImmediate(async () => {
-      try {
-        const { sendEmail } = await import("../../integrations/email/email.provider");
-        const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, firstName: true } });
-        if (user) {
-          await sendEmail({
-            to: user.email,
-            subject: `Registration Confirmed: ${registration.workshopTitle}`,
-            text: `Hello ${user.firstName},\n\nYour registration for "${registration.workshopTitle}" is confirmed!\n\nBest,\nAUREX Team`,
-            html: `<p>Hello ${user.firstName},</p><p>Your registration for <strong>${registration.workshopTitle}</strong> is confirmed!</p><p>Best,<br>AUREX Team</p>`
-          });
-        }
-      } catch (err) {
-        console.error("Email error on registration:", err);
-      }
-    });
   }
 
   return prisma.registration.findUnique({

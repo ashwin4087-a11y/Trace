@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useLocation, useParams } from "react-router-dom";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { ErrorState } from "../../components/common/ErrorState";
 import { Loader } from "../../components/common/Loader";
@@ -12,6 +12,7 @@ import { getWorkshop } from "../../services/workshop.service";
 
 export function WorkshopDetailsPage() {
   const { id = "" } = useParams();
+  const location = useLocation();
   const { user } = useAuth();
   const client = useQueryClient();
   const query = useQuery({ queryKey: ["workshop", id], queryFn: () => getWorkshop(id), enabled: Boolean(id) });
@@ -119,7 +120,7 @@ export function WorkshopDetailsPage() {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  <Link to="/login">
+                  <Link to={`/login?redirect=${encodeURIComponent(location.pathname)}`}>
                     <TraceButton className="w-full justify-center" icon="login">
                       Sign In to Register
                     </TraceButton>

@@ -26,7 +26,13 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
   });
   if (existing && existing.status === "ISSUED") return existing;
 
-  const workshop = await prisma.workshop.findUnique({ where: { id: workshopId } });
+  const workshop = await prisma.workshop.findUnique({
+    where: { id: workshopId },
+    include: {
+      organizer: { select: { firstName: true, lastName: true, organization: { select: { name: true } } } },
+      department: { select: { organization: { select: { name: true } } } },
+    },
+  });
   if (!workshop) throw new ApiError(404, "NOT_FOUND", "Workshop not found");
   if (workshop.status !== "COMPLETED" && workshop.status !== "PUBLISHED") {
     throw new ApiError(409, "WORKSHOP_NOT_READY", "Certificates are available after the workshop is running or completed");
@@ -51,6 +57,8 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
   const participant = await prisma.user.findUnique({ where: { id: participantId } });
   if (!participant) throw new ApiError(404, "NOT_FOUND", "Participant not found");
 
+  const settings = await getSettings();
+
   const certificateCode = randomToken(8);
   const issuedAt = new Date();
   const pdfPath = await writeCertificatePdf({
@@ -59,6 +67,10 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
     workshopTitle: workshop.title,
     attendancePercentage: eligibility.attendancePercentage,
     issuedAt,
+    providerName: workshop.department?.organization.name ?? workshop.organizer.organization?.name ?? `${workshop.organizer.firstName} ${workshop.organizer.lastName}`,
+    providerSignatory: `${workshop.organizer.firstName} ${workshop.organizer.lastName}`,
+    traceSignatoryName: settings.traceSignatoryName ?? "PROGRAMME DIRECTOR",
+    traceSignatoryTitle: settings.traceSignatoryTitle ?? "TRACE Academia",
   });
 
   const certificate = await prisma.certificate.create({

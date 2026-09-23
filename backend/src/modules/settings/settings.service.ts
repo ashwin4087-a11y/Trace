@@ -10,6 +10,8 @@ const defaults = {
   certificateMinPercent: 90,
   notificationsEnabled: true,
   maintenanceMode: false,
+  traceSignatoryName: "PROGRAMME DIRECTOR",
+  traceSignatoryTitle: "TRACE Academia",
 };
 
 export async function getSettings() {

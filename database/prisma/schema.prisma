@@ -1043,5 +1043,7 @@ model PlatformSetting {
   certificateMinPercent Int                 @default(90)
   notificationsEnabled  Boolean             @default(true)
   maintenanceMode       Boolean             @default(false)
+  traceSignatoryName    String?
+  traceSignatoryTitle   String?
   updatedAt             DateTime            @updatedAt
 }

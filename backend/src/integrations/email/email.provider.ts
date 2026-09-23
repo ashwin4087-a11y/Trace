@@ -26,12 +26,26 @@ export async function sendEmail(message: EmailMessage): Promise<{ delivered: boo
     auth: env.email.user ? { user: env.email.user, pass: env.email.password } : undefined,
   });
 
-  await transport.sendMail({
-    from: env.email.from,
-    to: message.to,
-    subject: message.subject,
-    text: message.text,
-    html: message.html,
-  });
-  return { delivered: true, mode: "smtp" };
+  try {
+    await transport.sendMail({
+      from: env.email.from,
+      to: message.to,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+    });
+    return { delivered: true, mode: "smtp" };
+  } catch (error) {
+    if (env.isProd) {
+      throw error;
+    }
+    fs.mkdirSync(outboxDir, { recursive: true });
+    const file = path.join(outboxDir, `mail-${Date.now()}.json`);
+    fs.writeFileSync(
+      file,
+      JSON.stringify({ ...message, loggedAt: new Date().toISOString() }, null, 2),
+    );
+    console.warn(`[email:log] SMTP delivery failed; wrote ${file}`);
+    return { delivered: false, mode: "log" };
+  }
 }

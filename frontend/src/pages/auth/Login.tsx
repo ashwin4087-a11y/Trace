@@ -33,9 +33,9 @@ export function LoginPage() {
           <div className="flex flex-col items-center text-center gap-3 pb-4 border-b border-[#DFC1B0]/60">
             <TraceLogo size="lg" to="/" />
             <div>
-              <h1 className="font-serif text-2xl md:text-3xl text-[#1A1412] font-normal mt-1">Scholar Authentication</h1>
+              <h1 className="font-serif text-2xl md:text-3xl text-[#1A1412] font-normal mt-1">Account Authentication</h1>
               <p className="font-sans text-xs text-[#5F524B] mt-1">
-                Access your verifiable learning passport, workshops, and academic trajectory.
+                Access your TRACE learning workspace, workshops, and academic trajectory.
               </p>
             </div>
           </div>

@@ -2,6 +2,7 @@ import type { Workshop } from "./workshop";
 
 export type Registration = {
   id: string;
+  createdAt?: string;
   status: string;
   workshopId: string;
   workshop?: Workshop;

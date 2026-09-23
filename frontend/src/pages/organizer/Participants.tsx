@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { OrganizerLayout } from "../../components/layout/OrganizerLayout";
 import { Loader } from "../../components/common/Loader";
 import { TraceBadge } from "../../components/trace/TraceBadge";
+import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
 import { workshopRegistrations } from "../../services/registration.service";
 
@@ -13,6 +14,29 @@ export function ParticipantsPage() {
     queryFn: () => workshopRegistrations(workshopId!),
     enabled: Boolean(workshopId),
   });
+  const workshop = workshops.data?.[0];
+
+  function exportParticipants() {
+    if (!workshop || !query.data?.length) return;
+
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const rows = [
+      ["Participant Name", "Email Address", "Enrolment Status", "Registered Date"],
+      ...query.data.map((item) => [
+        `${item.user?.firstName ?? ""} ${item.user?.lastName ?? ""}`.trim(),
+        item.user?.email ?? "",
+        item.status,
+        item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "",
+      ]),
+    ];
+    const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${workshop.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "workshop"}-participants.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <OrganizerLayout title="Participant Roster & Enrolments">
@@ -26,7 +50,19 @@ export function ParticipantsPage() {
               {workshops.data?.[0]?.title || "Workshop Roster"}
             </h3>
           </div>
-          <TraceBadge variant="cream">{query.data?.length ?? 0} Scholars Enrolled</TraceBadge>
+          <div className="flex items-center gap-3">
+            <TraceBadge variant="cream">{query.data?.length ?? 0} Scholars Enrolled</TraceBadge>
+            <TraceButton
+              type="button"
+              variant="secondary"
+              size="sm"
+              icon="download"
+              onClick={exportParticipants}
+              disabled={!query.data?.length}
+            >
+              Export CSV
+            </TraceButton>
+          </div>
         </div>
 
         {query.isLoading ? <Loader /> : null}

@@ -7,8 +7,7 @@ import { Sidebar } from "./Sidebar";
 
 const items = [
   { to: "/organizer", label: "Overview" },
-  { to: "/organizer/workshops", label: "Workshops" },
-  { to: "/organizer/workshops/new", label: "Create Workshop" },
+  { to: "/organizer/workshops", label: "Workshops", end: true },
   { to: "/organizer/sessions", label: "Sessions" },
   { to: "/organizer/participants", label: "Participants" },
   { to: "/organizer/attendance", label: "Attendance" },
@@ -47,6 +46,7 @@ export function OrganizerLayout({ title, children }: { title: string; children: 
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end ?? item.to.split("/").length <= 2}
               onClick={() => setMobileDrawerOpen(false)}
               className={({ isActive }) =>
                 `px-3 py-2 rounded-lg text-xs font-sans ${

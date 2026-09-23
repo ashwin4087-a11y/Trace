@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       register: async (input) => {
         await authService.register(input);
-        navigate("/verify-email");
+        navigate("/login");
       },
       logout: async () => {
         await authService.logout();

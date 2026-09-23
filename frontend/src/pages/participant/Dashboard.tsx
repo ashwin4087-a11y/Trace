@@ -12,6 +12,7 @@ import { myAnalytics } from "../../services/analytics.service";
 import { myPaths } from "../../services/learning-path.service";
 import { passport } from "../../services/skill.service";
 import { myCommunities } from "../../services/community.service";
+import { listWorkshops } from "../../services/workshop.service";
 import { api, unwrap } from "../../services/api";
 import type { Workshop } from "../../types/workshop";
 
@@ -36,6 +37,11 @@ export function ParticipantDashboardPage() {
     queryFn: () => unwrap<RecommendationItem[]>(api.get("/recommendations/me")),
   });
 
+  const workshopsQuery = useQuery({
+    queryKey: ["workshops", "dashboard"],
+    queryFn: () => listWorkshops({ pageSize: 3 }),
+  });
+
   const pathsQuery = useQuery({
     queryKey: ["learning-paths", "me"],
     queryFn: myPaths,
@@ -54,6 +60,7 @@ export function ParticipantDashboardPage() {
   const isLoading =
     analyticsQuery.isLoading ||
     recommendationsQuery.isLoading ||
+    workshopsQuery.isLoading ||
     pathsQuery.isLoading ||
     skillsQuery.isLoading ||
     communitiesQuery.isLoading;
@@ -74,7 +81,9 @@ export function ParticipantDashboardPage() {
       }
     | undefined;
 
-  const featuredRec = recommendationsQuery.data?.[0];
+  const featuredRec = recommendationsQuery.data?.[0] ?? (workshopsQuery.data?.[0]
+    ? { score: 0, reasons: [], workshop: workshopsQuery.data[0] }
+    : undefined);
   const activePath = pathsQuery.data?.[0];
   const skillsData = skillsQuery.data;
   const userCommunities = communitiesQuery.data ?? [];

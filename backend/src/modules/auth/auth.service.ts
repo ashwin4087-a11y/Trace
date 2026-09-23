@@ -104,20 +104,11 @@ export async function register(input: {
       lastName: input.lastName,
       preferredLanguage: input.preferredLanguage,
       role: "PARTICIPANT",
-      status: "PENDING_VERIFICATION",
+      status: "ACTIVE",
+      emailVerifiedAt: new Date(),
       notificationPreference: { create: {} },
     },
   });
-  const token = randomToken();
-  await prisma.emailVerificationToken.create({
-    data: {
-      userId: user.id,
-      tokenHash: sha256(token),
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24),
-    },
-  });
-  const message = verificationEmail(user.firstName, token);
-  await sendEmail({ to: user.email, ...message });
   await recordAudit(user.id, "CREATE_USER", "User", user.id, { source: "register" });
   return toPublicUser(user);
 }

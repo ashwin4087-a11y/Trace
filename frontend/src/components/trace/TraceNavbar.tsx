@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { useApp } from "../../context/AppContext";
 import { useNotifications } from "../../hooks/useNotifications";
+import { TraceLogo } from "./TraceLogo";
 
 export function TraceNavbar() {
   const location = useLocation();
@@ -46,23 +47,7 @@ export function TraceNavbar() {
       <div className="h-20 max-w-[1240px] mx-auto px-4 md:px-8 flex items-center justify-between gap-4">
         {/* Brand Mark */}
         <div className="flex items-center gap-3 shrink-0">
-          <Link to="/participant" className="flex items-center gap-2.5 group">
-            {/* TRACE Logo Symbol: Charcoal T with Terracotta Stroke */}
-            <div className="w-9 h-9 rounded-lg bg-[#1A1412] flex items-center justify-center relative overflow-hidden shadow-sm border border-[#DFC1B0]">
-              <span className="font-serif text-xl font-bold text-[#FFEDDB] z-10 leading-none">T</span>
-              <div className="absolute bottom-0 right-0 w-4 h-4 bg-[#BF9270] rounded-tl-full opacity-90"></div>
-              <div className="absolute top-0 left-0 w-full h-1 bg-[#E3B7A0]/40"></div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="font-serif text-2xl font-semibold text-[#1A1412] tracking-tight group-hover:text-[#BF9270] transition-colors">
-                TRACE
-              </span>
-              <span className="h-4 w-px bg-[#DFC1B0]"></span>
-              <span className="font-sans text-[11px] font-bold uppercase tracking-widest text-[#5F524B]">
-                Academia
-              </span>
-            </div>
-          </Link>
+          <TraceLogo to="/participant" size="md" />
         </div>
 
         {/* Desktop Navigation */}

@@ -17,23 +17,43 @@ export function WorkshopsPage() {
     queryKey: ["workshops", search, domain],
     queryFn: () => listWorkshops({ search: search || undefined, domain: domain || undefined }),
   });
+
   return (
     <MainLayout>
-      <h1 className="mb-4 text-3xl font-bold">Workshops</h1>
-      <div className="mb-4 grid gap-3 md:grid-cols-[1fr_220px]">
-        <SearchBar value={search} onChange={setSearch} placeholder="Search title or category" />
-        <Select label="Domain" value={domain} onChange={(event) => setDomain(event.target.value)}>
-          <option value="">All domains</option>
-          <option value="ENGINEERING">Engineering</option>
-          <option value="ARTS_SCIENCE">Arts & Science</option>
-          <option value="TAMIL_LANGUAGE">Tamil / Language</option>
-          <option value="OTHER">Other</option>
-        </Select>
+      <div className="flex flex-col gap-6">
+        <div>
+          <span className="font-sans text-xs font-bold uppercase tracking-widest text-[#BF9270]">
+            Curricular Directory
+          </span>
+          <h1 className="font-serif text-3xl md:text-4xl text-[#1A1412] font-normal mt-1">
+            Discover Workshops
+          </h1>
+          <p className="font-sans text-sm text-[#5F524B] mt-1">
+            Browse accredited courses, hands-on seminars, and lifelong learning tracks across departments.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-[1fr_240px] bg-[#FFFFFF] border border-[#DFC1B0] rounded-lg p-4 shadow-xs">
+          <SearchBar value={search} onChange={setSearch} placeholder="Search title, topic, or instructor..." />
+          <Select label="Domain" value={domain} onChange={(event) => setDomain(event.target.value)}>
+            <option value="">All domains</option>
+            <option value="ENGINEERING">Engineering & Technology</option>
+            <option value="ARTS_SCIENCE">Arts & Science</option>
+            <option value="TAMIL_LANGUAGE">Tamil & Language</option>
+            <option value="OTHER">Interdisciplinary</option>
+          </Select>
+        </div>
+
+        {query.isLoading ? <Loader /> : null}
+        {query.isError ? <ErrorState message={errorText(query.error)} /> : null}
+        {query.data && query.data.length === 0 ? <EmptyState title="No published workshops found" /> : null}
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {query.data?.map((workshop) => (
+            <WorkshopCard key={workshop.id} workshop={workshop} />
+          ))}
+        </div>
       </div>
-      {query.isLoading ? <Loader /> : null}
-      {query.isError ? <ErrorState message={errorText(query.error)} /> : null}
-      {query.data && query.data.length === 0 ? <EmptyState title="No published workshops" /> : null}
-      <div className="grid gap-4 md:grid-cols-3">{query.data?.map((workshop) => <WorkshopCard key={workshop.id} workshop={workshop} />)}</div>
     </MainLayout>
   );
 }

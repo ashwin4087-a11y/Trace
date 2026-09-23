@@ -5,6 +5,7 @@ import { ErrorState } from "../../components/common/ErrorState";
 import { Loader } from "../../components/common/Loader";
 import { errorText } from "../../lib/errors";
 import { createOrganizer, listUsers } from "../../services/user.service";
+import { PasswordInput } from "../../components/common/PasswordInput";
 
 export function OrganizersPage() {
   const client = useQueryClient();
@@ -55,10 +56,15 @@ export function OrganizersPage() {
             <span className={labelCls} style={{ fontFamily: "Manrope, sans-serif" }}>Email Address</span>
             <input type="email" className={inputCls} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required style={{ fontFamily: "Manrope, sans-serif" }} />
           </label>
-          <label className="flex flex-col gap-1">
-            <span className={labelCls} style={{ fontFamily: "Manrope, sans-serif" }}>Temporary Password</span>
-            <input type="password" className={inputCls} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required style={{ fontFamily: "Manrope, sans-serif" }} />
-          </label>
+          <PasswordInput
+            label="Temporary Password"
+            labelClassName={labelCls}
+            className={inputCls}
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+            required
+            style={{ fontFamily: "Manrope, sans-serif" }}
+          />
           {mutation.isError ? (
             <p className="text-xs text-red-600" style={{ fontFamily: "Manrope, sans-serif" }}>
               {errorText(mutation.error)}

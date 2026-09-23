@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { ErrorState } from "../../components/common/ErrorState";
 import { Input } from "../../components/common/Input";
+import { PasswordInput } from "../../components/common/PasswordInput";
 import { Select } from "../../components/common/Select";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { TraceLogo } from "../../components/trace/TraceLogo";
@@ -52,7 +53,7 @@ export function RegisterPage() {
           </div>
 
           <Input label="Email Address" type="email" value={form.email} onChange={(event) => set("email", event.target.value)} required />
-          <Input label="Password" type="password" value={form.password} onChange={(event) => set("password", event.target.value)} required />
+          <PasswordInput label="Password" value={form.password} onChange={(event) => set("password", event.target.value)} required />
 
           <Select label="Preferred Language" value={form.preferredLanguage} onChange={(event) => set("preferredLanguage", event.target.value)}>
             <option value="EN">English</option>

@@ -1,6 +1,18 @@
 import { asyncHandler } from "../../shared/utils/async-handler";
 import * as attendance from "./attendance.service";
 
+export const getSessionAttendance = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await attendance.sessionAttendance(req.user!, req.params.sessionId) });
+});
+
+export const initialize = asyncHandler(async (req, res) => {
+  res.status(201).json({ success: true, data: await attendance.initialize(req.user!, req.params.sessionId) });
+});
+
+export const bulkMark = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await attendance.bulkMark(req.user!, req.params.sessionId, req.body) });
+});
+
 export const mark = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: await attendance.markManual(req.user!, req.body) });
 });
@@ -9,12 +21,20 @@ export const correct = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await attendance.correct(req.user!, req.params.id, req.body) });
 });
 
+export const generateQr = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await attendance.generateQr(req.user!, req.params.sessionId) });
+});
+
+export const closeQr = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await attendance.closeQr(req.user!, req.params.sessionId) });
+});
+
 export const qr = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await attendance.checkInWithQr(req.user!.id, req.body.token) });
 });
 
 export const workshop = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await attendance.historyForWorkshop(req.params.workshopId) });
+  res.json({ success: true, data: await attendance.workshopSummary(req.user!, req.params.workshopId) });
 });
 
 export const mine = asyncHandler(async (req, res) => {

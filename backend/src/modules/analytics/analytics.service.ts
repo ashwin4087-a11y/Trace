@@ -41,13 +41,13 @@ export async function organizerAnalytics(organizerId: string) {
   const [registrations, certificates, submissions] = await Promise.all([
     prisma.registration.count({ where: { workshopId: { in: ids }, status: "CONFIRMED" } }),
     prisma.certificate.count({ where: { workshopId: { in: ids }, status: "ISSUED" } }),
-    prisma.assessmentSubmission.findMany({ where: { assessment: { workshopId: { in: ids } } } }),
+    prisma.assessmentAttempt.findMany({ where: { assessment: { workshopId: { in: ids } }, status: "SUBMITTED" } }),
   ]);
   const attendanceRows = await prisma.attendance.count({
     where: { status: "PRESENT", session: { workshopId: { in: ids } } },
   });
   const averageScore = submissions.length
-    ? submissions.reduce((sum, item) => sum + (item.maxScore ? (item.score / item.maxScore) * 100 : 0), 0) /
+    ? submissions.reduce((sum: number, item: any) => sum + (item.maxScore ? (item.score / item.maxScore) * 100 : 0), 0) /
       submissions.length
     : 0;
   return {

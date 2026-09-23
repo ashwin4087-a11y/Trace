@@ -1,28 +1,27 @@
 import { Router } from "express";
-import { requireAuth, requireVerified } from "../../middleware/auth.middleware";
-import { requirePermission, requireRoles } from "../../middleware/rbac.middleware";
+import { requireAuth } from "../../middleware/auth.middleware";
 import { validate } from "../../middleware/validation.middleware";
-import * as controller from "./attendance.controller";
-import { correctSchema, markSchema, qrSchema } from "./attendance.validation";
+import * as attendance from "./attendance.controller";
+import * as schemas from "./attendance.validation";
 
-export const attendanceRouter = Router();
+const router = Router();
 
-attendanceRouter.use(requireAuth, requireVerified);
-attendanceRouter.get("/me", controller.mine);
-attendanceRouter.get("/workshops/:workshopId/summary", controller.summary);
-attendanceRouter.get("/workshops/:workshopId", requireRoles("ORGANIZER", "ADMIN"), controller.workshop);
-attendanceRouter.post("/qr", requireRoles("PARTICIPANT"), validate(qrSchema), controller.qr);
-attendanceRouter.post(
-  "/",
-  requireRoles("ORGANIZER", "ADMIN"),
-  requirePermission("attendance.write"),
-  validate(markSchema),
-  controller.mark,
-);
-attendanceRouter.patch(
-  "/:id",
-  requireRoles("ORGANIZER", "ADMIN"),
-  requirePermission("attendance.write"),
-  validate(correctSchema),
-  controller.correct,
-);
+router.use(requireAuth);
+
+// Organizer routes
+router.get("/workshops/:workshopId/attendance", attendance.workshop);
+router.get("/sessions/:sessionId/attendance", attendance.getSessionAttendance);
+router.post("/sessions/:sessionId/attendance/initialize", attendance.initialize);
+router.post("/sessions/:sessionId/attendance/bulk", validate(schemas.bulkMarkSchema), attendance.bulkMark);
+router.post("/attendance", validate(schemas.markSchema), attendance.mark);
+router.patch("/attendance/:id", validate(schemas.correctSchema), attendance.correct);
+
+router.post("/sessions/:sessionId/attendance/qr/generate", attendance.generateQr);
+router.post("/sessions/:sessionId/attendance/qr/close", attendance.closeQr);
+
+// Participant routes
+router.post("/attendance/qr", validate(schemas.qrSchema), attendance.qr);
+router.get("/workshops/:workshopId/attendance/summary", attendance.summary);
+router.get("/attendance/me", attendance.mine);
+
+export { router as attendanceRoutes };

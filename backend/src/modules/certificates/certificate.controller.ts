@@ -13,6 +13,13 @@ export const generate = asyncHandler(async (req, res) => {
   });
 });
 
+export const evaluateEligibility = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    data: await certificates.evaluateEligibility(req.params.workshopId, req.params.registrationId),
+  });
+});
+
 export const mine = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await certificates.listMine(req.user!.id) });
 });

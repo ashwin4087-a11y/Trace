@@ -10,6 +10,13 @@ export const workshopRouter = Router();
 
 workshopRouter.get("/", optionalAuth, controller.list);
 workshopRouter.get("/:id", optionalAuth, controller.get);
+workshopRouter.get(
+  "/:id/participants",
+  requireAuth,
+  requireVerified,
+  requireRoles("ORGANIZER", "ADMIN"),
+  controller.participants
+);
 workshopRouter.post(
   "/",
   requireAuth,
@@ -27,6 +34,13 @@ workshopRouter.patch(
   requirePermission("workshop.create"),
   validate(updateWorkshopSchema),
   controller.update,
+);
+workshopRouter.delete(
+  "/:id",
+  requireAuth,
+  requireVerified,
+  requireRoles("ORGANIZER", "ADMIN"),
+  controller.remove,
 );
 workshopRouter.post(
   "/:id/publish",

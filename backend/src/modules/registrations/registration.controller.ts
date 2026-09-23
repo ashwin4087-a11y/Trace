@@ -12,8 +12,12 @@ export const mine = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await registrations.listMine(req.user!.id) });
 });
 
+export const getById = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await registrations.getRegistrationDetails(req.user!.id, req.params.id, req.user!.role) });
+});
+
 export const byWorkshop = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await registrations.listForWorkshop(String(req.query.workshopId)) });
+  res.json({ success: true, data: await registrations.listForWorkshop(String(req.query.workshopId), req.user!.id, req.user!.role) });
 });
 
 export const cancel = asyncHandler(async (req, res) => {

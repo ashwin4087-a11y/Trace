@@ -1,10 +1,10 @@
 export type ProfileSignals = {
   domain?: string | null;
   departmentName?: string | null;
-  year?: string | null;
+  year?: string | number | null;
   skills: string[];
   interests: string[];
-  language: string;
+  language: string
 };
 
 export type WorkshopSignals = {

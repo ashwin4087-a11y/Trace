@@ -56,7 +56,7 @@ export async function notifyWorkshopPublished(workshopId: string) {
 
   const workshop = await prisma.workshop.findUnique({
     where: { id: workshopId },
-    include: { skills: { include: { skill: true } }, department: true },
+    include: { workshopSkills: { include: { skill: true } }, department: true },
   });
   if (!workshop || workshop.status !== "PUBLISHED") return { notified: 0 };
 
@@ -84,12 +84,12 @@ export async function notifyWorkshopPublished(workshopId: string) {
       },
       {
         id: workshop.id,
-        domain: workshop.domain,
+        domain: workshop.domain!,
         departmentName: workshop.department?.name,
-        level: workshop.level,
-        language: workshop.language,
-        skills: workshop.skills.map((item) => item.skill.name),
-        category: workshop.category,
+        level: workshop.level!,
+        language: workshop.language!,
+        skills: workshop.workshopSkills.map((item) => item.skill.name),
+        category: workshop.category!,
         title: workshop.title,
       },
     );

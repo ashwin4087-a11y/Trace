@@ -1,11 +1,15 @@
 import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../../config/database";
+import { env } from "../../config/environment";
+import { mockUserFromEnv } from "../../shared/auth/dev-user.adapter";
 import { verifyAccessToken } from "../../shared/utils/tokens";
 
 /** Attaches req.user when a bearer token is present. Public catalog stays readable. */
 export async function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) {
+    const mock = mockUserFromEnv({ ...process.env, NODE_ENV: env.nodeEnv });
+    if (mock) req.user = mock;
     next();
     return;
   }
@@ -13,15 +17,8 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
     const payload = verifyAccessToken(header.slice(7));
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      include: {
-        userRoles: {
-          include: {
-            role: { include: { permissions: { include: { permission: true } } } },
-          },
-        },
-      },
     });
-    if (user && user.status !== "SUSPENDED" && user.status !== "DEACTIVATED") {
+    if (user && user.status !== "SUSPENDED") {
       req.user = {
         id: user.id,
         email: user.email,
@@ -29,10 +26,8 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
         status: user.status,
         organizationId: user.organizationId,
         departmentId: user.departmentId,
-        roles: user.userRoles.length ? user.userRoles.map((assignment) => assignment.role.name) : [user.role],
-        permissions: user.userRoles.flatMap((assignment) =>
-          assignment.role.permissions.map((rolePermission) => rolePermission.permission.key),
-        ),
+        roles: [user.role],
+        permissions: [],
       };
     }
   } catch {

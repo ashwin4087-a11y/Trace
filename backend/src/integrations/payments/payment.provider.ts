@@ -43,3 +43,17 @@ export async function verifyPaymentIntent(input: {
   }
   return false;
 }
+
+export async function refundPayment(input: {
+  orderId: string;
+  providerReference: string;
+}): Promise<boolean> {
+  if (env.payment.provider === "dev" && !env.isProd) {
+    return true; // Mock refund
+  }
+  throw new ApiError(
+    501,
+    "PAYMENT_PROVIDER_NOT_IMPLEMENTED",
+    "Refunds are not implemented for the current payment provider.",
+  );
+}

@@ -1,8 +1,8 @@
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import { decideRegistration } from "../../shared/utils/registration-rules";
-import { notifyRegistration } from "../notifications/notification.service";
 import { getSettings } from "../settings/settings.service";
+import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 
 export async function registerForWorkshop(userId: string, workshopId: string) {
   const settings = await getSettings();
@@ -26,12 +26,12 @@ export async function registerForWorkshop(userId: string, workshopId: string) {
     });
     const decision = decideRegistration({
       workshopStatus: workshop.status,
-      deadline: workshop.registrationDeadline,
+      deadline: workshop.registrationDeadline!,
       now: new Date(),
       confirmedCount,
-      capacity: workshop.capacity,
+      capacity: workshop.capacity!,
       waitlistEnabled: workshop.waitlistEnabled,
-      priceCents: workshop.priceCents,
+      priceCents: workshop.priceCents ?? 0,
     });
     if (!decision.ok) {
       const messages = {
@@ -45,10 +45,19 @@ export async function registerForWorkshop(userId: string, workshopId: string) {
     const saved = existing
       ? await tx.registration.update({
           where: { id: existing.id },
-          data: { status: decision.status },
+          data: { 
+            status: decision.status,
+            confirmedAt: decision.status === "CONFIRMED" ? new Date() : existing.confirmedAt,
+            cancelledAt: null,
+          },
         })
       : await tx.registration.create({
-          data: { workshopId, userId, status: decision.status },
+          data: { 
+            workshopId, 
+            userId, 
+            status: decision.status,
+            confirmedAt: decision.status === "CONFIRMED" ? new Date() : null,
+          },
         });
 
     if (decision.status === "CONFIRMED") {
@@ -67,11 +76,11 @@ export async function registerForWorkshop(userId: string, workshopId: string) {
     if (decision.status === "PENDING_PAYMENT") {
       await tx.order.upsert({
         where: { registrationId: saved.id },
-        update: { status: "PENDING", amountCents: workshop.priceCents, currency: workshop.currency },
+        update: { status: "PENDING", amountCents: workshop.priceCents ?? 0, currency: workshop.currency },
         create: {
           userId,
           registrationId: saved.id,
-          amountCents: workshop.priceCents,
+          amountCents: workshop.priceCents ?? 0,
           currency: workshop.currency,
           status: "PENDING",
         },
@@ -81,15 +90,12 @@ export async function registerForWorkshop(userId: string, workshopId: string) {
   });
 
   if (registration.status === "CONFIRMED") {
-    await notifyRegistration(userId, registration.workshopTitle);
-    const community = await prisma.community.findUnique({ where: { workshopId } });
-    if (community) {
-      await prisma.communityMember.upsert({
-        where: { communityId_userId: { communityId: community.id, userId } },
-        update: {},
-        create: { communityId: community.id, userId },
-      });
-    }
+    await emitWorkshopDomainEvent({
+      type: "REGISTRATION_CONFIRMED",
+      userId,
+      workshopId,
+      workshopTitle: registration.workshopTitle,
+    });
   }
 
   return prisma.registration.findUnique({
@@ -106,7 +112,31 @@ export async function listMine(userId: string) {
   });
 }
 
-export async function listForWorkshop(workshopId: string) {
+export async function getRegistrationDetails(userId: string, registrationId: string, role: string) {
+  const reg = await prisma.registration.findUnique({
+    where: { id: registrationId },
+    include: { workshop: true, order: { include: { payment: true } } },
+  });
+  if (!reg) throw new ApiError(404, "NOT_FOUND", "Registration not found");
+
+  if (role === "PARTICIPANT" && reg.userId !== userId) {
+    throw new ApiError(403, "FORBIDDEN", "You cannot view this registration");
+  }
+  if ((role === "ORGANIZER" || role === "ADMIN") && reg.userId !== userId && reg.workshop.organizerId !== userId && role !== "ADMIN") {
+    throw new ApiError(403, "FORBIDDEN", "You cannot view this registration");
+  }
+  return reg;
+}
+
+export async function listForWorkshop(workshopId: string, userId: string, role: string) {
+  if (role !== "ADMIN") {
+    const workshop = await prisma.workshop.findUnique({ where: { id: workshopId } });
+    if (!workshop) throw new ApiError(404, "NOT_FOUND", "Workshop not found");
+    if (workshop.organizerId !== userId) {
+      throw new ApiError(403, "FORBIDDEN", "You are not the organizer of this workshop");
+    }
+  }
+
   return prisma.registration.findMany({
     where: { workshopId },
     include: { user: { select: { id: true, email: true, firstName: true, lastName: true } } },
@@ -122,6 +152,6 @@ export async function cancelRegistration(userId: string, registrationId: string,
   }
   return prisma.registration.update({
     where: { id: registrationId },
-    data: { status: "CANCELLED" },
+    data: { status: "CANCELLED", cancelledAt: new Date() },
   });
 }

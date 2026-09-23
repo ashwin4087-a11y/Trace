@@ -1,25 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Source Sans 3", "Noto Sans Tamil", sans-serif;
-  --color-ink: #10241f;
-  --color-brand: #0f6e56;
-  --color-brand-dark: #0b5344;
-  --color-paper: #f4f1ea;
-  --color-card: #fffcf7;
-  --color-line: #e4ddd0;
-  --color-accent: #9a6b2f;
+  --font-serif: "EB Garamond", "Noto Serif Tamil", Georgia, serif;
+  --font-sans: "Manrope", "Noto Sans Tamil", sans-serif;
+  
+  --color-canvas-cream: #FFEDDB;
+  --color-surface-clean: #FFFFFF;
+  --color-surface-secondary: #EDCDBB;
+  --color-border-warm: #DFC1B0;
+  --color-ink-charcoal: #1A1412;
+  --color-ink-dark-brown: #261D1A;
+  --color-ink-muted: #5F524B;
+  --color-cta-terracotta: #BF9270;
+  --color-accent-trace: #E3B7A0;
+  --color-footer-charcoal: #1A1412;
+
+  /* Legacy fallback colors for un-migrated pages */
+  --color-ink: #1A1412;
+  --color-brand: #BF9270;
+  --color-brand-dark: #261D1A;
+  --color-paper: #FFEDDB;
+  --color-card: #FFFFFF;
+  --color-line: #DFC1B0;
+  --color-accent: #E3B7A0;
   --color-danger: #9f2d2d;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background-color: var(--color-canvas-cream);
+  color: var(--color-ink-charcoal);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
   color: inherit;
+  text-decoration: none;
+}
+
+/* Custom scrollbar for trace aesthetic */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FFEDDB;
+}
+::-webkit-scrollbar-thumb {
+  background: #DFC1B0;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #BF9270;
 }

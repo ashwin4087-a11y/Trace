@@ -3,6 +3,7 @@ import { env } from "./config/environment";
 import { prisma } from "./config/database";
 import { startNotificationWorker } from "./jobs/notification.job";
 import { startSessionReminderScheduler } from "./jobs/session-reminder.job";
+import { startWorkshopDigestScheduler } from "./jobs/workshop-digest.job";
 import { registerWorkshopEngagement } from "./modules/notifications/workshop-engagement.subscriber";
 
 registerWorkshopEngagement();
@@ -13,6 +14,7 @@ const server = app.listen(env.port, () => {
   console.info(`AUREX LMS API listening on ${env.backendUrl}`);
   void startNotificationWorker();
   startSessionReminderScheduler();
+  startWorkshopDigestScheduler();
 });
 
 async function shutdown() {

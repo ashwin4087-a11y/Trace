@@ -8,6 +8,20 @@ export const registerSchema = z.object({
     firstName: z.string().trim().min(1).max(80),
     lastName: z.string().trim().min(1).max(80),
     preferredLanguage: z.enum(["EN", "TA", "EN_TA"]).default("EN"),
+    interests: z.array(z.enum([
+      "Technology",
+      "AI & ML",
+      "Cybersecurity",
+      "Law",
+      "Business",
+      "Entrepreneurship",
+      "Design",
+      "Finance",
+      "Research",
+      "Leadership",
+      "Social Impact",
+      "Communication",
+    ])).max(12).default([]),
   }),
 });
 

@@ -71,6 +71,34 @@ export function workshopPublishedEmail(name: string, title: string, workshopId: 
   };
 }
 
+export function workshopDigestEmail(
+  name: string,
+  recommendations: Array<{ title: string; score: number; workshopId: string }>,
+) {
+  const count = recommendations.length;
+  const portalUrl = `${env.frontendUrl}/workshops?recommended=true`;
+  const links = recommendations.map((item) => `${item.title} (${item.score}% match): ${env.frontendUrl}/workshops/${item.workshopId}`);
+  return {
+    subject: `${count} workshops matched to your interests | TRACE Academia`,
+    text: [
+      "TRACE Academia",
+      "",
+      `Hello ${name},`,
+      "",
+      `We found ${count} workshops currently open for registration that match your interests and profile.`,
+      "",
+      "RECOMMENDED FOR YOU",
+      ...links,
+      "",
+      `VIEW ALL ${count} WORKSHOPS: ${portalUrl}`,
+      "",
+      "TRACE Academia",
+      "Every learning experience leaves a trace.",
+    ].join("\n"),
+    html: `<div style="margin:0;background:#fff4e8;padding:32px 16px;font-family:Arial,sans-serif;color:#1a1412"><div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid #dfc1b0;border-radius:12px;overflow:hidden"><div style="background:#1a1412;padding:24px 32px;color:#ffeddb;font-size:20px;font-weight:bold">TRACE <span style="color:#bf9270;font-size:12px">ACADEMIA</span></div><div style="padding:32px"><p>Hello ${name},</p><h1 style="font-size:26px;font-weight:normal">${count} workshops matched to your interests</h1><p style="color:#5f524b;line-height:1.6">We found workshops currently open for registration that match your interests and profile.</p><h2 style="font-size:13px;letter-spacing:.12em;color:#bf9270">RECOMMENDED FOR YOU</h2>${recommendations.map((item) => `<p style="border-top:1px solid #dfc1b0;padding-top:14px"><strong>${item.title}</strong><br><span style="color:#8b5e3c">${item.score}% match</span><br><a href="${env.frontendUrl}/workshops/${item.workshopId}" style="color:#8b5e3c">View &amp; Register &rarr;</a></p>`).join("")}<p style="margin:28px 0;text-align:center"><a href="${portalUrl}" style="display:inline-block;background:#bf9270;color:#fff;padding:14px 24px;border-radius:7px;text-decoration:none;font-weight:bold">VIEW ALL ${count} WORKSHOPS &rarr;</a></p></div><div style="border-top:1px solid #dfc1b0;padding:20px 32px;color:#6b5448;font-size:12px"><strong>TRACE Academia</strong><br><em>Every learning experience leaves a trace.</em></div></div></div>`,
+  };
+}
+
 export function registrationEmail(name: string, title: string, workshopId: string) {
   const workshopUrl = `${env.frontendUrl}/workshops/${workshopId}`;
   return {

@@ -15,6 +15,7 @@ type AuthState = {
     firstName: string;
     lastName: string;
     preferredLanguage: "EN" | "TA" | "EN_TA";
+    interests: string[];
   }) => Promise<void>;
   logout: () => Promise<void>;
 };

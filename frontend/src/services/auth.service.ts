@@ -7,6 +7,7 @@ export async function register(input: {
   firstName: string;
   lastName: string;
   preferredLanguage: "EN" | "TA" | "EN_TA";
+  interests: string[];
 }) {
   return unwrap<AuthUser>(await api.post("/auth/register", input));
 }

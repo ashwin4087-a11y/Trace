@@ -91,6 +91,7 @@ export async function register(input: {
   firstName: string;
   lastName: string;
   preferredLanguage: "EN" | "TA" | "EN_TA";
+  interests: string[];
 }) {
   const existing = await prisma.user.findUnique({ where: { email: input.email.toLowerCase() } });
   if (existing) {
@@ -107,6 +108,9 @@ export async function register(input: {
       status: "ACTIVE",
       emailVerifiedAt: new Date(),
       notificationPreference: { create: {} },
+      interests: {
+        create: input.interests.map((label) => ({ label })),
+      },
     },
   });
   await recordAudit(user.id, "CREATE_USER", "User", user.id, { source: "register" });

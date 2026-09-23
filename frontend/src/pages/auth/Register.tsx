@@ -10,6 +10,21 @@ import { TraceLogo } from "../../components/trace/TraceLogo";
 import { useAuth } from "../../context/AuthContext";
 import { errorText } from "../../lib/errors";
 
+const INTEREST_OPTIONS = [
+  "Technology",
+  "AI & ML",
+  "Cybersecurity",
+  "Law",
+  "Business",
+  "Entrepreneurship",
+  "Design",
+  "Finance",
+  "Research",
+  "Leadership",
+  "Social Impact",
+  "Communication",
+];
+
 export function RegisterPage() {
   const { register } = useAuth();
   const [form, setForm] = useState({
@@ -18,9 +33,16 @@ export function RegisterPage() {
     email: "",
     password: "",
     preferredLanguage: "EN" as "EN" | "TA" | "EN_TA",
+    interests: [] as string[],
   });
   const [error, setError] = useState("");
   const set = (key: string, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const toggleInterest = (interest: string) => setForm((current) => ({
+    ...current,
+    interests: current.interests.includes(interest)
+      ? current.interests.filter((item) => item !== interest)
+      : [...current.interests, interest],
+  }));
 
   return (
     <MainLayout>
@@ -60,6 +82,23 @@ export function RegisterPage() {
             <option value="TA">Tamil (தமிழ்)</option>
             <option value="EN_TA">Bilingual (English + தமிழ்)</option>
           </Select>
+
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium text-[#1A1412]">Areas of interest</legend>
+            <div className="grid grid-cols-2 gap-2">
+              {INTEREST_OPTIONS.map((interest) => (
+                <label key={interest} className="flex items-center gap-2 text-xs text-[#5F524B]">
+                  <input
+                    type="checkbox"
+                    checked={form.interests.includes(interest)}
+                    onChange={() => toggleInterest(interest)}
+                    className="accent-[#BF9270]"
+                  />
+                  {interest}
+                </label>
+              ))}
+            </div>
+          </fieldset>
 
           {error ? <ErrorState message={error} /> : null}
 

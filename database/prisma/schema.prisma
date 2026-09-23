@@ -203,6 +203,40 @@ enum AttendanceMethod {
   CORRECTION
 }
 
+enum AttendanceMonitoringMode {
+  HEARTBEAT
+  STRICT_FOCUS
+}
+
+enum AttendanceLiveSessionStatus {
+  ACTIVE
+  ENDED
+  EXPIRED
+}
+
+enum AttendanceLiveEventType {
+  CHECK_IN
+  HEARTBEAT
+  TAB_HIDDEN
+  TAB_VISIBLE
+  WINDOW_BLUR
+  WINDOW_FOCUS
+  FULLSCREEN_ENTER
+  FULLSCREEN_EXIT
+  IDLE_START
+  IDLE_END
+  TAKEOVER
+  IDENTITY_FLAG
+  CHECK_OUT
+}
+
+enum AttendanceComputationStatus {
+  PENDING
+  COMPLETED
+  INSUFFICIENT
+  ABSENT
+}
+
 enum CertificateStatus {
   ISSUED
   REVOKED
@@ -539,6 +573,12 @@ model Workshop {
   priceCents           Int                @default(0)
   currency             String             @default("INR")
   certificateEnabled   Boolean            @default(false)
+  attendanceRequired   Boolean            @default(false)
+  attendanceThresholdPercent Int          @default(75)
+  monitoringMode       AttendanceMonitoringMode @default(HEARTBEAT)
+  heartbeatIntervalSeconds Int            @default(30)
+  joinWindowMinutesBefore Int             @default(30)
+  endGraceMinutes      Int                @default(15)
   status               WorkshopStatus     @default(DRAFT)
   skills               String[]           @default([])
   createdAt            DateTime           @default(now())
@@ -588,6 +628,7 @@ model WorkshopSession {
   trainerId       String?
   trainerName     String?
   meetingUrl      String?
+  meetingPasscode String?
   recordingUrl    String?
   venue           String?
   status          SessionStatus @default(SCHEDULED)
@@ -605,6 +646,9 @@ model WorkshopSession {
   activities                   Activity[]
   personalQrTokens             PersonalQrToken[]
   attendanceMonitoringSessions AttendanceMonitoringSession[]
+  attendanceAccessTokens        AttendanceAccessToken[]
+  attendanceLiveSessions        AttendanceLiveSession[]
+  attendanceComputations       AttendanceComputation[]
 
   @@index([workshopId, sessionDate])
 }
@@ -623,6 +667,9 @@ model Registration {
   user                         User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
   order                        Order?
   attendance                   Attendance[]
+  attendanceAccessTokens       AttendanceAccessToken[]
+  attendanceLiveSessions       AttendanceLiveSession[]
+  attendanceComputations       AttendanceComputation[]
   personalQrTokens             PersonalQrToken[]
   attendanceMonitoringSessions AttendanceMonitoringSession[]
 
@@ -841,6 +888,80 @@ model Attendance {
   @@unique([sessionId, registrationId])
   @@index([userId])
   @@index([sessionId])
+}
+
+model AttendanceAccessToken {
+  id                  String   @id @default(uuid())
+  tokenHash           String   @unique
+  registrationId      String
+  workshopSessionId   String
+  validFrom           DateTime
+  expiresAt           DateTime
+  redeemedAt          DateTime?
+  revokedAt           DateTime?
+  createdAt           DateTime @default(now())
+
+  registration    Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  workshopSession WorkshopSession @relation(fields: [workshopSessionId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId, workshopSessionId])
+}
+
+model AttendanceLiveSession {
+  id                    String                    @id @default(uuid())
+  registrationId        String
+  workshopSessionId     String
+  sessionCookieHash     String                    @unique
+  startedAt             DateTime                  @default(now())
+  endedAt               DateTime?
+  lastHeartbeatAt       DateTime?
+  status                AttendanceLiveSessionStatus @default(ACTIVE)
+  consentAcceptedAt     DateTime?
+  deviceFingerprintHash String?
+
+  registration    Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  workshopSession WorkshopSession @relation(fields: [workshopSessionId], references: [id], onDelete: Cascade)
+  events          AttendanceLiveEvent[]
+
+  @@index([registrationId, workshopSessionId])
+}
+
+model AttendanceLiveEvent {
+  id                    String                 @id @default(uuid())
+  attendanceLiveSessionId String
+  clientEventId         String
+  type                  AttendanceLiveEventType
+  serverTime            DateTime               @default(now())
+  clientTime            DateTime?
+  meta                  Json?
+
+  attendanceLiveSession AttendanceLiveSession @relation(fields: [attendanceLiveSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([attendanceLiveSessionId, clientEventId])
+  @@index([attendanceLiveSessionId, serverTime])
+}
+
+model AttendanceComputation {
+  id                 String                       @id @default(uuid())
+  registrationId     String
+  workshopSessionId  String
+  presentSeconds     Int
+  awaySeconds        Int
+  scheduledSeconds   Int
+  percentage         Decimal
+  status             AttendanceComputationStatus
+  certificateEligible Boolean
+  policyVersion      String
+  computedAt         DateTime                     @default(now())
+  overriddenBy       String?
+  overrideReason     String?
+  overriddenAt       DateTime?
+
+  registration    Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  workshopSession WorkshopSession @relation(fields: [workshopSessionId], references: [id], onDelete: Cascade)
+
+  @@unique([registrationId, workshopSessionId])
+  @@index([registrationId])
 }
 
 model Certificate {

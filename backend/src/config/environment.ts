@@ -28,6 +28,12 @@ export const env = {
   jwtAccessTtl: process.env.JWT_ACCESS_TTL ?? "15m",
   jwtRefreshTtlDays: Number(process.env.JWT_REFRESH_TTL_DAYS ?? 7),
   redisUrl: process.env.REDIS_URL || "",
+  attendance: {
+    enabled: process.env.ATTENDANCE_ENABLED === "true",
+    autoIssue: process.env.ATTENDANCE_AUTO_ISSUE === "true",
+    tokenRetentionDays: Number(process.env.ATTENDANCE_TOKEN_RETENTION_DAYS ?? 30),
+    eventRetentionDays: Number(process.env.ATTENDANCE_EVENT_RETENTION_DAYS ?? 180),
+  },
   email: {
     host: process.env.EMAIL_HOST || "",
     port: Number(process.env.EMAIL_PORT ?? 587),

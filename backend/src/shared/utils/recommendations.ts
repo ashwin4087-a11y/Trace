@@ -9,59 +9,94 @@ export type ProfileSignals = {
 
 export type WorkshopSignals = {
   id: string;
-  domain: string;
+  domain?: string | null;
   departmentName?: string | null;
-  level: string;
-  language: string;
+  level?: string | null;
+  language?: string | null;
   skills: string[];
-  category: string;
+  category?: string | null;
   title: string;
+  registrationCount?: number;
 };
+
+export type RecommendationBreakdown = {
+  interestMatch: number;
+  departmentMatch: number;
+  secondaryRelevance: number;
+  engagement: number;
+};
+
+export const RECOMMENDATION_WEIGHTS = {
+  interestMatch: 50,
+  departmentMatch: 30,
+  secondaryRelevance: 10,
+  engagement: 10,
+} as const;
+
+export function calculateEngagementScore(registrationCount: number, weight = RECOMMENDATION_WEIGHTS.engagement) {
+  return Math.min(weight, Math.round(Math.log1p(Math.max(0, registrationCount)) * (weight / 4)));
+}
+
+function normalize(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function matchesInterest(interest: string, value: string | null | undefined) {
+  const normalizedInterest = normalize(interest);
+  const normalizedValue = normalize(value);
+  return Boolean(normalizedInterest && normalizedValue && (
+    normalizedInterest === normalizedValue ||
+    normalizedInterest.includes(normalizedValue) ||
+    normalizedValue.includes(normalizedInterest)
+  ));
+}
 
 export function scoreWorkshop(
   profile: ProfileSignals,
   workshop: WorkshopSignals,
-): { score: number; reasons: string[] } {
-  let score = 0;
+): { score: number; reasons: string[]; breakdown: RecommendationBreakdown } {
   const reasons: string[] = [];
-  const skills = new Set(profile.skills.map((item) => item.toLowerCase()));
-  const interests = new Set(profile.interests.map((item) => item.toLowerCase()));
+  const interests = profile.interests.filter(Boolean);
+  const primaryInterestMatch = interests.some((interest) =>
+    matchesInterest(interest, workshop.domain) || matchesInterest(interest, workshop.category),
+  );
+  const secondaryHits = interests.filter((interest) =>
+    [workshop.title, ...workshop.skills].some((value) => matchesInterest(interest, value)),
+  );
 
-  if (profile.domain && profile.domain === workshop.domain) {
-    score += 40;
+  const breakdown: RecommendationBreakdown = {
+    interestMatch: primaryInterestMatch ? RECOMMENDATION_WEIGHTS.interestMatch : 0,
+    departmentMatch: 0,
+    secondaryRelevance: Math.min(RECOMMENDATION_WEIGHTS.secondaryRelevance, secondaryHits.length * 5),
+    engagement: calculateEngagementScore(workshop.registrationCount ?? 0),
+  };
+
+  if (primaryInterestMatch) {
+    reasons.push("Matches one of your interests");
+  }
+  if (profile.domain && workshop.domain && normalize(profile.domain) === normalize(workshop.domain)) {
     reasons.push("Academic domain matches");
   }
   if (
     profile.departmentName &&
     workshop.departmentName &&
-    profile.departmentName.toLowerCase() === workshop.departmentName.toLowerCase()
+    normalize(profile.departmentName) === normalize(workshop.departmentName)
   ) {
-    score += 15;
+    breakdown.departmentMatch = 30;
     reasons.push("Department matches");
-  }
-  if (profile.language === workshop.language || profile.language === "EN_TA" || workshop.language === "EN_TA") {
-    score += 15;
-    reasons.push("Language preference matches");
-  }
-
-  const skillHits = workshop.skills.filter((skill) => skills.has(skill.toLowerCase()));
-  if (skillHits.length > 0) {
-    score += Math.min(20, skillHits.length * 10);
-    reasons.push(`Skills: ${skillHits.join(", ")}`);
+  } else if (!workshop.departmentName) {
+    breakdown.departmentMatch = 15;
+    reasons.push("Open to all departments");
   }
 
-  const interestHits = [workshop.category, workshop.title, ...workshop.skills].filter((value) =>
-    interests.has(value.toLowerCase()),
-  );
-  if (interestHits.length > 0) {
-    score += 10;
-    reasons.push("Interest overlap");
+  if (secondaryHits.length > 0) {
+    reasons.push(`Related to ${secondaryHits.slice(0, 2).join(" and ")}`);
   }
 
-  if ((profile.year === "FIRST" || profile.year === "SECOND") && workshop.level === "BEGINNER") {
-    score += 5;
-    reasons.push("Level fits early year of study");
+  if (breakdown.engagement > 0) {
+    reasons.push("Popular with other participants");
   }
 
-  return { score, reasons };
+  const score = breakdown.interestMatch + breakdown.departmentMatch + breakdown.secondaryRelevance + breakdown.engagement;
+  return { score: Math.min(100, score), reasons, breakdown };
 }

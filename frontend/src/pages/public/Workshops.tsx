@@ -1,5 +1,6 @@
-﻿import { useState, useMemo } from "react";
+﻿import { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router-dom";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { SearchBar } from "../../components/common/SearchBar";
 import { Loader } from "../../components/common/Loader";
@@ -9,8 +10,23 @@ import { WorkshopCard } from "../../components/workshops/WorkshopCard";
 import { DomainMultiSelect, type DomainValue } from "../../components/common/DomainMultiSelect";
 import { listWorkshops } from "../../services/workshop.service";
 import { errorText } from "../../lib/errors";
+import { useAuth } from "../../context/AuthContext";
+import { api, unwrap } from "../../services/api";
+import type { Workshop } from "../../types/workshop";
+
+type Recommendation = { score: number; reasons: string[]; workshop: Workshop };
 
 export function WorkshopsPage() {
+  const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const recommendedOnly = new URLSearchParams(location.search).get("recommended") === "true";
+
+  useEffect(() => {
+    if (recommendedOnly && !user) {
+      navigate(`/login?redirect=${encodeURIComponent(`${location.pathname}${location.search}`)}`, { replace: true });
+    }
+  }, [location.pathname, location.search, navigate, recommendedOnly, user]);
   const [search, setSearch] = useState("");
   // appliedDomains = the committed filter (empty = All domains)
   const [appliedDomains, setAppliedDomains] = useState<DomainValue[]>([]);
@@ -28,6 +44,12 @@ export function WorkshopsPage() {
     queryKey: ["workshops", search, backendDomain, appliedDomains.length],
     queryFn: () =>
       listWorkshops({ search: search || undefined, domain: backendDomain }),
+  });
+
+  const recommendationsQuery = useQuery({
+    queryKey: ["recommendations", "workshops"],
+    queryFn: () => unwrap<Recommendation[]>(api.get("/recommendations/me")),
+    enabled: Boolean(user),
   });
 
   // Client-side OR filter for multi-domain case
@@ -58,6 +80,26 @@ export function WorkshopsPage() {
           </p>
         </div>
 
+        {user && recommendationsQuery.data && recommendationsQuery.data.length > 0 ? (
+          <section className="flex flex-col gap-4">
+            <div>
+              <span className="font-sans text-xs font-bold uppercase tracking-widest text-[#BF9270]">Personalized discovery</span>
+              <h2 className="font-serif text-2xl text-[#1A1412] mt-1">Recommended for you</h2>
+              <p className="font-sans text-sm text-[#5F524B] mt-1">Sorted by your interests, department, and workshop relevance.</p>
+            </div>
+            <div className="grid gap-6 md:grid-cols-3">
+              {recommendationsQuery.data.map((item) => (
+                <div key={item.workshop.id} className="relative">
+                  <span className="absolute right-3 top-3 z-10 rounded-full bg-[#1A1412] px-2.5 py-1 text-xs font-bold text-[#FFEDDB]">
+                    {item.score}% match
+                  </span>
+                  <WorkshopCard workshop={item.workshop} />
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-[1fr_280px] bg-[#FFFFFF] border border-[#DFC1B0] rounded-lg p-4 shadow-xs">
           <SearchBar
             value={search}
@@ -77,11 +119,17 @@ export function WorkshopsPage() {
           <EmptyState title="No published workshops found" />
         ) : null}
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {displayed.map((workshop) => (
-            <WorkshopCard key={workshop.id} workshop={workshop} />
-          ))}
-        </div>
+        <section className="flex flex-col gap-4">
+          <div>
+            <span className="font-sans text-xs font-bold uppercase tracking-widest text-[#BF9270]">Full directory</span>
+            <h2 className="font-serif text-2xl text-[#1A1412] mt-1">Explore all workshops</h2>
+          </div>
+          <div className="grid gap-6 md:grid-cols-3">
+            {displayed.map((workshop) => (
+              <WorkshopCard key={workshop.id} workshop={workshop} />
+            ))}
+          </div>
+        </section>
       </div>
     </MainLayout>
   );

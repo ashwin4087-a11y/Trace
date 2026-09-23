@@ -23,6 +23,7 @@ import { RecommendationsPage } from "../pages/participant/Recommendations";
 import { SessionsPage } from "../pages/participant/Sessions";
 import { SkillsPage } from "../pages/participant/Skills";
 import { WorkshopLearningPage } from "../pages/participant/WorkshopLearning";
+import { ScanVerifyPage } from "../pages/participant/ScanVerify";
 import { OrganizerAnalyticsPage } from "../pages/organizer/Analytics";
 import { AnnouncementsPage } from "../pages/organizer/Announcements";
 import { OrganizerAssessmentsPage } from "../pages/organizer/Assessments";
@@ -73,6 +74,7 @@ export function AppRoutes() {
           <Route path="/participant/communities" element={<CommunitiesPage />} />
           <Route path="/participant/learning-paths" element={<LearningPathsPage />} />
           <Route path="/participant/skills" element={<SkillsPage />} />
+          <Route path="/scan" element={<ScanVerifyPage />} />
         </Route>
         <Route element={<RoleRoute allow={["ORGANIZER"]} />}>
           <Route path="/organizer" element={<OrganizerDashboardPage />} />

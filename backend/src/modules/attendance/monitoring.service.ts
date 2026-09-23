@@ -64,21 +64,26 @@ export async function verifyMyQr(user: AuthUser, input: { sessionId: string; tok
   }
 
   const tokenHash = sha256(input.token);
-  const qrToken = await prisma.personalQrToken.findUnique({ where: { tokenHash } });
+  let isValidMasterToken = false;
 
-  if (!qrToken) throw new ApiError(404, "NOT_FOUND", "Invalid QR code.");
-  if (qrToken.userId !== user.id) throw new ApiError(403, "FORBIDDEN", "QR code belongs to another participant.");
-  if (qrToken.sessionId !== input.sessionId) throw new ApiError(400, "BAD_REQUEST", "QR code is for a different session.");
-  if (qrToken.registrationId !== registration.id) throw new ApiError(403, "FORBIDDEN", "Registration mismatch.");
-  
-  if (qrToken.consumedAt) throw new ApiError(403, "FORBIDDEN", "This QR code has already been used.");
-  if (new Date() > qrToken.expiresAt) throw new ApiError(410, "GONE", "QR code expired. Please generate a new QR.");
+  if (session.qrTokenHash === tokenHash) {
+    isValidMasterToken = true;
+  } else {
+    // Fallback to personal token check
+    const qrToken = await prisma.personalQrToken.findUnique({ where: { tokenHash } });
+    if (!qrToken) throw new ApiError(404, "NOT_FOUND", "Invalid QR code.");
+    if (qrToken.userId !== user.id) throw new ApiError(403, "FORBIDDEN", "QR code belongs to another participant.");
+    if (qrToken.sessionId !== input.sessionId) throw new ApiError(400, "BAD_REQUEST", "QR code is for a different session.");
+    if (qrToken.registrationId !== registration.id) throw new ApiError(403, "FORBIDDEN", "Registration mismatch.");
+    if (qrToken.consumedAt) throw new ApiError(403, "FORBIDDEN", "This QR code has already been used.");
+    if (new Date() > qrToken.expiresAt) throw new ApiError(410, "GONE", "QR code expired. Please generate a new QR.");
 
-  // Mark token consumed
-  await prisma.personalQrToken.update({
-    where: { id: qrToken.id },
-    data: { consumedAt: new Date() }
-  });
+    // Mark token consumed
+    await prisma.personalQrToken.update({
+      where: { id: qrToken.id },
+      data: { consumedAt: new Date() }
+    });
+  }
 
   // Upsert Attendance
   const attendance = await prisma.attendance.upsert({

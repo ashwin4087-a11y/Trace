@@ -9,6 +9,8 @@ import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
 import { createSession, issueQr, listSessions } from "../../services/session.service";
 
+import { QRCodeSVG } from "qrcode.react";
+
 export function OrganizerSessionsPage() {
   const workshops = useWorkshopList();
   const workshopId = workshops.data?.[0]?.id ?? "";
@@ -22,7 +24,7 @@ export function OrganizerSessionsPage() {
 
   const [title, setTitle] = useState("Interactive Lecture & Lab");
   const [start, setStart] = useState("");
-  const [token, setToken] = useState("");
+  const [activeToken, setActiveToken] = useState<{token: string, sessionId: string} | null>(null);
   const [mode, setMode] = useState<"ONLINE" | "OFFLINE" | "HYBRID">("ONLINE");
   const [meetingUrl, setMeetingUrl] = useState("");
   const [venue, setVenue] = useState("");
@@ -63,11 +65,21 @@ export function OrganizerSessionsPage() {
 
             {sessions.isLoading ? <Loader /> : null}
 
-            {token ? (
-              <div className="p-4 bg-[#FFEDDB] border border-[#BF9270] rounded-lg text-xs font-sans text-[#1A1412] flex flex-col gap-1">
-                <span className="font-bold text-[#BF9270] uppercase">Generated Session Attendance Token:</span>
-                <span className="font-mono text-base font-bold tracking-wider">{token}</span>
-                <span className="text-[#5F524B]">Display this code on screen during live lecture for scholar check-in.</span>
+            {activeToken ? (
+              <div className="p-6 bg-[#FFEDDB] border border-[#BF9270] rounded-lg text-xs font-sans text-[#1A1412] flex flex-col items-center justify-center gap-4">
+                <span className="font-bold text-[#BF9270] uppercase tracking-wider text-sm">Session Master QR Code</span>
+                <QRCodeSVG 
+                  value={`${window.location.origin}/scan?token=${activeToken.token}&sessionId=${activeToken.sessionId}`} 
+                  size={256} 
+                  level="H" 
+                  includeMargin 
+                  fgColor="#1A1412" 
+                  bgColor="#FFFFFF" 
+                />
+                <span className="font-mono text-base font-bold tracking-wider">{activeToken.token}</span>
+                <span className="text-[#5F524B] text-center max-w-sm">
+                  Display this code on screen during the live lecture for participants to scan and log attendance.
+                </span>
               </div>
             ) : null}
 
@@ -91,7 +103,10 @@ export function OrganizerSessionsPage() {
                       variant="secondary"
                       size="sm"
                       icon="qr_code_2"
-                      onClick={async () => setToken((await issueQr(session.id)).token)}
+                      onClick={async () => {
+                        const { token } = await issueQr(session.id);
+                        setActiveToken({ token, sessionId: session.id });
+                      }}
                     >
                       Issue Token
                     </TraceButton>

@@ -5,12 +5,20 @@ export const list = asyncHandler(async (_req, res) => {
   res.json({ success: true, data: await organizations.listOrganizations() });
 });
 
+export const get = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await organizations.getOrganization(req.params.id) });
+});
+
 export const create = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: await organizations.createOrganization(req.user!.id, req.body) });
 });
 
 export const update = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await organizations.updateOrganization(req.params.id, req.body) });
+  res.json({ success: true, data: await organizations.updateOrganization(req.user!.id, req.params.id, req.body) });
+});
+
+export const status = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await organizations.setOrganizationStatus(req.user!.id, req.params.id, req.body.status) });
 });
 
 export const remove = asyncHandler(async (req, res) => {

@@ -23,8 +23,8 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     if (!user) {
       throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     }
-    if (user.status === "SUSPENDED") {
-      throw new ApiError(403, "ACCOUNT_SUSPENDED", "This account is suspended");
+    if (user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
+      throw new ApiError(403, "ACCOUNT_DISABLED", "This account is not active");
     }
     req.user = {
       id: user.id,

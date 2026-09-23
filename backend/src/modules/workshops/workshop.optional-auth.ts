@@ -21,7 +21,7 @@ export async function optionalAuth(req: Request, _res: Response, next: NextFunct
         },
       },
     });
-    if (user && user.status !== "SUSPENDED") {
+    if (user && user.status !== "SUSPENDED" && user.status !== "DEACTIVATED") {
       req.user = {
         id: user.id,
         email: user.email,

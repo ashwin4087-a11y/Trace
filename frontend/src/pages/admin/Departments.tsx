@@ -4,7 +4,7 @@ import { AdminLayout } from "../../components/layout/AdminLayout";
 import { Button } from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
 import { Select } from "../../components/common/Select";
-import { createDepartment, listDepartments, listOrganizations } from "../../services/organization.service";
+import { createDepartment, listDepartments, listOrganizations, setDepartmentStatus } from "../../services/organization.service";
 
 export function DepartmentsPage() {
   const client = useQueryClient();
@@ -28,7 +28,7 @@ export function DepartmentsPage() {
         <Input label="Code" value={code} onChange={(event) => setCode(event.target.value)} required />
         <Button type="submit">Add department</Button>
       </form>
-      <ul className="space-y-2 text-sm">{departments.data?.map((item) => <li key={item.id}>{item.code} · {item.name}</li>)}</ul>
+      <ul className="space-y-2 text-sm">{departments.data?.map((item) => <li key={item.id} className="flex items-center justify-between rounded border border-line p-3"><span>{item.code} · {item.name} · {item.status}</span><Button variant={item.status === "ACTIVE" ? "danger" : "secondary"} onClick={() => setDepartmentStatus(item.id, item.status === "ACTIVE" ? "DEACTIVATED" : "ACTIVE").then(() => client.invalidateQueries({ queryKey: ["departments"] }))}>{item.status === "ACTIVE" ? "Deactivate" : "Activate"}</Button></li>)}</ul>
     </AdminLayout>
   );
 }

@@ -18,7 +18,7 @@ import { recordAudit } from "../audit/audit.service";
 
 const REFRESH_COOKIE = "refreshToken";
 
-type AccessAssignment = {
+export type AccessAssignment = {
   role: {
     name: RoleName;
     permissions: { permission: { key: string } }[];
@@ -37,17 +37,22 @@ export function toPublicUser(user: User, assignments?: AccessAssignment[]): Publ
   const access = accessFor(assignments, user.role);
   return {
     id: user.id,
+    name: user.name,
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
+    phone: user.phone,
     role: user.role,
     status: user.status,
+    emailVerified: user.emailVerified,
     preferredLanguage: user.preferredLanguage,
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
     organizationId: user.organizationId,
     departmentId: user.departmentId,
     roles: access.roles,
     permissions: access.permissions,
+    createdAt: user.createdAt.toISOString(),
+    updatedAt: user.updatedAt.toISOString(),
   };
 }
 
@@ -143,8 +148,8 @@ export async function login(email: string, password: string, res: Response) {
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
-  if (user.status === "SUSPENDED") {
-    throw new ApiError(403, "ACCOUNT_SUSPENDED", "This account is suspended");
+  if (user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
+    throw new ApiError(403, "ACCOUNT_DISABLED", "This account is not active");
   }
   const session = await issueSession(user, res);
   await recordAudit(user.id, "LOGIN", "User", user.id);
@@ -199,7 +204,7 @@ export async function verifyEmail(token: string) {
     }),
     prisma.user.update({
       where: { id: record.userId },
-      data: { status: "ACTIVE", emailVerifiedAt: new Date() },
+      data: { status: "ACTIVE", emailVerified: true, emailVerifiedAt: new Date() },
     }),
   ]);
 }

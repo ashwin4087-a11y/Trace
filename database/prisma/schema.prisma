@@ -206,6 +206,11 @@ enum AuditAction {
   PUBLISH_WORKSHOP
   MODIFY_ATTENDANCE
   GENERATE_CERTIFICATE
+  UPDATE_ORGANIZATION
+  ORGANIZATION_STATUS
+  CREATE_DEPARTMENT
+  UPDATE_DEPARTMENT
+  DEPARTMENT_STATUS
 }
 
 // ---------------------------------------------------------------------------

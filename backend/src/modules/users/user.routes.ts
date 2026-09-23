@@ -3,7 +3,7 @@ import { requireAuth, requireVerified } from "../../middleware/auth.middleware";
 import { requirePermission, requireRoles } from "../../middleware/rbac.middleware";
 import { validate } from "../../middleware/validation.middleware";
 import * as controller from "./user.controller";
-import { createOrganizerSchema, listUsersSchema, statusSchema, updateUserSchema } from "./user.validation";
+import { createOrganizerSchema, listUsersSchema, roleSchema, statusSchema, updateUserSchema } from "./user.validation";
 
 export const userRouter = Router();
 
@@ -23,6 +23,13 @@ userRouter.patch(
   requirePermission("user.write"),
   validate(updateUserSchema),
   controller.update,
+);
+userRouter.patch(
+  "/:id/role",
+  requireRoles("ADMIN"),
+  requirePermission("role.write"),
+  validate(roleSchema),
+  controller.role,
 );
 userRouter.patch(
   "/:id/status",

@@ -8,7 +8,9 @@ export const list = asyncHandler(async (req, res) => {
     pageSize: number;
     search?: string;
     role?: "ADMIN" | "ORGANIZER" | "PARTICIPANT";
-    status?: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED";
+    status?: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+    organizationId?: string;
+    departmentId?: string;
   };
   const page = Number(query.page ?? 1);
   const pageSize = Number(query.pageSize ?? 20);
@@ -18,6 +20,8 @@ export const list = asyncHandler(async (req, res) => {
     search: query.search,
     role: query.role,
     status: query.status,
+    organizationId: query.organizationId,
+    departmentId: query.departmentId,
   });
   res.json({ success: true, data: result.items, meta: pageMeta(page, pageSize, result.total) });
 });
@@ -32,6 +36,10 @@ export const update = asyncHandler(async (req, res) => {
 
 export const status = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await users.setStatus(req.user!.id, req.params.id, req.body.status) });
+});
+
+export const role = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await users.assignRole(req.user!.id, req.params.id, req.body.role) });
 });
 
 export const createOrganizer = asyncHandler(async (req, res) => {

@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "../../components/layout/AdminLayout";
 import { Button } from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
-import { createOrganization, listOrganizations } from "../../services/organization.service";
+import { createOrganization, listOrganizations, setOrganizationStatus } from "../../services/organization.service";
 
 export function OrganizationsPage() {
   const client = useQueryClient();
@@ -21,7 +21,7 @@ export function OrganizationsPage() {
         <Input label="Code" value={code} onChange={(event) => setCode(event.target.value)} required />
         <Button type="submit">Add organization</Button>
       </form>
-      <ul className="space-y-2 text-sm">{query.data?.map((item) => <li key={item.id}>{item.code} · {item.name}</li>)}</ul>
+      <ul className="space-y-2 text-sm">{query.data?.map((item) => <li key={item.id} className="flex items-center justify-between rounded border border-line p-3"><span>{item.code} · {item.name} · {item.status}</span><Button variant={item.status === "ACTIVE" ? "danger" : "secondary"} onClick={() => setOrganizationStatus(item.id, item.status === "ACTIVE" ? "DEACTIVATED" : "ACTIVE").then(() => client.invalidateQueries({ queryKey: ["organizations"] }))}>{item.status === "ACTIVE" ? "Deactivate" : "Activate"}</Button></li>)}</ul>
     </AdminLayout>
   );
 }

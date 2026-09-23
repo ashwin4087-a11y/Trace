@@ -6,12 +6,20 @@ export const list = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await departments.listDepartments(organizationId) });
 });
 
+export const get = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await departments.getDepartment(req.params.id) });
+});
+
 export const create = asyncHandler(async (req, res) => {
-  res.status(201).json({ success: true, data: await departments.createDepartment(req.body) });
+  res.status(201).json({ success: true, data: await departments.createDepartment(req.user!.id, req.body) });
 });
 
 export const update = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await departments.updateDepartment(req.params.id, req.body) });
+  res.json({ success: true, data: await departments.updateDepartment(req.user!.id, req.params.id, req.body) });
+});
+
+export const status = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await departments.setDepartmentStatus(req.user!.id, req.params.id, req.body.status) });
 });
 
 export const remove = asyncHandler(async (req, res) => {

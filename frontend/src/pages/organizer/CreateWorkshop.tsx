@@ -37,7 +37,7 @@ function timePart(value: string) {
 }
 
 function combineDateTime(date: string, time: string) {
-  return date && time ? `${date}T${time}` : "";
+  return date || time ? `${date}T${time}` : "";
 }
 
 function today() {

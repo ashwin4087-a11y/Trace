@@ -24,6 +24,8 @@ export const PERMISSIONS = [
   { key: "user.write", description: "Create and update users" },
   { key: "user.suspend", description: "Suspend user accounts" },
   { key: "organizer.create", description: "Create organizer accounts" },
+  { key: "organizer.read", description: "View organizer accounts" },
+  { key: "organizer.write", description: "Update organizer accounts" },
   { key: "organization.write", description: "Manage organizations and departments" },
   { key: "organization.read", description: "View organizations and departments" },
   { key: "department.read", description: "View departments" },

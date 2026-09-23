@@ -42,6 +42,7 @@ export function toPublicUser(user: User, assignments?: AccessAssignment[]): Publ
     firstName: user.firstName,
     lastName: user.lastName,
     phone: user.phone,
+    designation: user.designation,
     role: user.role,
     status: user.status,
     emailVerified: user.emailVerified,

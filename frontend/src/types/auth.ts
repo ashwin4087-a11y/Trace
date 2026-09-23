@@ -8,6 +8,7 @@ export type AuthUser = {
   firstName: string;
   lastName: string;
   phone: string | null;
+  designation: string | null;
   role: Role;
   status: AccountStatus;
   emailVerified: boolean;

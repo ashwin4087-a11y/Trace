@@ -21,6 +21,7 @@ import { learningRouter } from "./modules/learning/learning.routes";
 import { learningPathRouter } from "./modules/learning-paths/learning-path.routes";
 import { notificationRouter } from "./modules/notifications/notification.routes";
 import { organizationRouter } from "./modules/organizations/organization.routes";
+import { organizerRouter } from "./modules/organizers/organizer.routes";
 import { paymentRouter } from "./modules/payments/payment.routes";
 import { permissionRouter } from "./modules/permissions/permission.routes";
 import { profileRouter } from "./modules/profiles/profile.routes";
@@ -89,6 +90,7 @@ export function createApp() {
   app.use("/api/roles", roleRouter);
   app.use("/api/permissions", permissionRouter);
   app.use("/api/organizations", organizationRouter);
+  app.use("/api/organizers", organizerRouter);
   app.use("/api/departments", departmentRouter);
   app.use("/api/profiles", profileRouter);
   app.use("/api/workshops", workshopRouter);

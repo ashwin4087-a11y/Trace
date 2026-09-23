@@ -7,6 +7,7 @@ export type PublicUser = {
   firstName: string;
   lastName: string;
   phone: string | null;
+  designation: string | null;
   role: RoleName;
   status: AccountStatus;
   emailVerified: boolean;

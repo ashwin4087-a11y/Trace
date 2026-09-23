@@ -211,6 +211,10 @@ enum AuditAction {
   CREATE_DEPARTMENT
   UPDATE_DEPARTMENT
   DEPARTMENT_STATUS
+  UPDATE_ORGANIZER
+  ACTIVATE_ORGANIZER
+  SUSPEND_ORGANIZER
+  DEACTIVATE_ORGANIZER
 }
 
 // ---------------------------------------------------------------------------
@@ -227,6 +231,7 @@ model User {
   role              RoleName          @default(PARTICIPANT)
   status            AccountStatus     @default(PENDING_VERIFICATION)
   phone             String?
+  designation       String?
   emailVerified     Boolean           @default(false)
   emailVerifiedAt   DateTime?
   preferredLanguage PreferredLanguage @default(EN)

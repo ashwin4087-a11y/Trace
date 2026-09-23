@@ -13,9 +13,19 @@ export function Navbar() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-[#FFEDDB]/95 backdrop-blur-md border-b border-[#DFC1B0]">
       <div className="mx-auto flex h-20 max-w-[1240px] items-center justify-between gap-4 px-4 md:px-8">
-        <TraceLogo to="/" size="md" />
+        <TraceLogo to="" size="md" />
 
         <nav className="hidden lg:flex items-center gap-8 text-sm font-sans">
+          <NavLink
+            to="/"
+            className={({ isActive }) =>
+              `transition-colors py-1 ${
+                isActive ? "text-[#BF9270] font-semibold border-b-2 border-[#BF9270] -mb-[2px]" : "text-[#5F524B] hover:text-[#1A1412]"
+              }`
+            }
+          >
+            {t("home")}
+          </NavLink>
           <NavLink
             to="/workshops"
             className={({ isActive }) =>
@@ -110,6 +120,13 @@ export function Navbar() {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="lg:hidden border-t border-[#DFC1B0] bg-[#FFEDDB] px-4 pt-3 pb-6 flex flex-col gap-3 shadow-lg">
+          <NavLink
+            to="/"
+            onClick={() => setMobileMenuOpen(false)}
+            className="py-2 px-3 rounded-lg text-sm text-[#1A1412] hover:bg-[#EDCDBB]/50"
+          >
+            {t("home")}
+          </NavLink>
           <NavLink
             to="/workshops"
             onClick={() => setMobileMenuOpen(false)}

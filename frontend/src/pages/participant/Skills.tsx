@@ -9,6 +9,7 @@ import { TraceEmptyState } from "../../components/trace/TraceEmptyState";
 import { TraceLoadingState } from "../../components/trace/TraceLoadingState";
 import { TraceErrorState } from "../../components/trace/TraceErrorState";
 import { addSkill, passport } from "../../services/skill.service";
+import { downloadCertificate } from "../../lib/certificateGenerator";
 
 export function SkillsPage() {
   const { language } = useApp();
@@ -247,11 +248,21 @@ export function SkillsPage() {
                     <span className="font-sans text-xs text-[#FFEDDB]/60">
                       On-Chain Verification Ready
                     </span>
-                    <Link to={`/verify/${cert.certificateCode}`}>
-                      <TraceButton variant="ghost" size="sm" icon="verified">
-                        Verify Certificate
+                    <div className="flex gap-2">
+                      <TraceButton 
+                        variant="ghost" 
+                        size="sm" 
+                        icon="download"
+                        onClick={() => downloadCertificate(cert)}
+                      >
+                        Download
                       </TraceButton>
-                    </Link>
+                      <Link to={`/verify/${cert.certificateCode}`}>
+                        <TraceButton variant="ghost" size="sm" icon="verified">
+                          Verify
+                        </TraceButton>
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}

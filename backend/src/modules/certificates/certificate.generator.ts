@@ -103,7 +103,9 @@ export async function writeCertificatePdf(input: {
 
     // Verification / QR
     doc.font("Helvetica-Bold").fontSize(7).fillColor("#1A1412").text("VERIFY THIS CERTIFICATE", width - 240, 440);
-    doc.image(qr, width - 240, 455, { width: 45 });
+    if (qr) {
+      doc.image(qr, width - 240, 455, { width: 45 });
+    }
     doc.font("Helvetica").fontSize(7).fillColor("#5F524B").text("Scan the QR code or visit", width - 185, 460);
     doc.text(certificateVerifyUrl("[CODE]").replace("[CODE]", ""), width - 185, 470); // the URL base
     doc.font("Helvetica-Bold").fillColor("#A55743").text(input.certificateCode, width - 185, 480);

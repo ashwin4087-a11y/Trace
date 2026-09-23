@@ -26,7 +26,7 @@ export function registerWorkshopEngagement() {
       return;
     }
     if (event.type === "REGISTRATION_CONFIRMED") {
-      await notifyRegistration(event.userId, event.workshopTitle);
+      await notifyRegistration(event.userId, event.workshopTitle, event.workshopId);
       const community = await prisma.community.findUnique({ where: { workshopId: event.workshopId } });
       if (community) {
         await prisma.communityMember.upsert({

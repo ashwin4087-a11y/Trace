@@ -330,16 +330,13 @@ export async function publishWorkshop(user: AuthUser, id: string) {
     try {
       const { sendEmail } = await import("../../integrations/email/email.provider");
       const participants = await prisma.user.findMany({
-        where: { role: "PARTICIPANT", status: "ACTIVE" },
+        where: { status: "ACTIVE" },
         select: { email: true, firstName: true }
       });
       for (const p of participants) {
-        await sendEmail({
-          to: p.email,
-          subject: `New Workshop Published: ${updated.title}`,
-          text: `Hello ${p.firstName},\n\nA new workshop "${updated.title}" has been published. Registration is now open!\n\nBest,\nAdmin`,
-          html: `<p>Hello ${p.firstName},</p><p>A new workshop <strong>${updated.title}</strong> has been published. Registration is now open!</p><p>Best,<br>Admin</p>`
-        }).catch(err => console.error(`Failed to send email to ${p.email}:`, err));
+        const { workshopPublishedEmail } = await import("../../integrations/email/email.templates");
+        await sendEmail({ to: p.email, ...workshopPublishedEmail(p.firstName, updated.title, updated.id) })
+          .catch(err => console.error(`Failed to send email to ${p.email}:`, err));
       }
     } catch (err) {
       console.error("Bulk email error on publish:", err);

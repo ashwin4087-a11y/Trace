@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
-import type { RoleName } from "@prisma/client";
+import type { UserRole } from "@prisma/client";
 import { ApiError } from "../shared/errors/api-error";
 
-export function requireRoles(...roles: RoleName[]) {
+export function requireRoles(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user || !roles.some((role) => req.user!.roles.includes(role))) {
       next(new ApiError(403, "FORBIDDEN", "You do not have permission to perform this action"));

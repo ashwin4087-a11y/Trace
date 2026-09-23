@@ -29,6 +29,8 @@ export function mockUserFromEnv(envValues: NodeJS.ProcessEnv): AuthUser | null {
     status: "ACTIVE",
     organizationId: envValues.DEV_MOCK_ORGANIZATION_ID || null,
     departmentId: envValues.DEV_MOCK_DEPARTMENT_ID || null,
+    roles: [role as UserRole],
+    permissions: [],
   };
 }
 

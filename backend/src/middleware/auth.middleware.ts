@@ -20,18 +20,11 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
     const payload = verifyAccessToken(header.slice(7));
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      include: {
-        userRoles: {
-          include: {
-            role: { include: { permissions: { include: { permission: true } } } },
-          },
-        },
-      },
     });
     if (!user) {
       throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     }
-    if (user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
+    if (user.status === "SUSPENDED") {
       throw new ApiError(403, "ACCOUNT_DISABLED", "This account is not active");
     }
     req.user = {
@@ -41,10 +34,8 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       status: user.status,
       organizationId: user.organizationId,
       departmentId: user.departmentId,
-      roles: user.userRoles.length ? user.userRoles.map((assignment) => assignment.role.name) : [user.role],
-      permissions: user.userRoles.flatMap((assignment) =>
-        assignment.role.permissions.map((rolePermission) => rolePermission.permission.key),
-      ),
+      roles: [user.role],
+      permissions: [],
     };
     next();
   } catch (error) {

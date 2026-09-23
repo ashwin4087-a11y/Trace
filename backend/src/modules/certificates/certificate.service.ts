@@ -5,7 +5,7 @@ import { isCertificateEligible } from "../../shared/utils/attendance";
 import { randomToken } from "../../shared/utils/tokens";
 import { summarize } from "../attendance/attendance.service";
 import { recordAudit } from "../audit/audit.service";
-import { notifyCertificate } from "../notifications/notification.service";
+import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 import { getSettings } from "../settings/settings.service";
 import { assertCanManageWorkshop } from "../workshops/workshop.service";
 import { writeCertificatePdf } from "./certificate.generator";
@@ -73,7 +73,12 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
   await recordAudit(actor.id, "GENERATE_CERTIFICATE", "Certificate", certificate.id, {
     percentage: summary.percentage,
   });
-  await notifyCertificate(participantId, workshop.title, certificateCode);
+  await emitWorkshopDomainEvent({
+    type: "CERTIFICATE_ISSUED",
+    userId: participantId,
+    workshopTitle: workshop.title,
+    certificateCode,
+  });
   return certificate;
 }
 
@@ -97,7 +102,13 @@ export async function verify(certificateCode: string) {
     where: { certificateCode },
     include: {
       user: { select: { firstName: true, lastName: true } },
-      workshop: { select: { title: true } },
+      workshop: {
+        select: {
+          title: true,
+          organizer: { select: { firstName: true, lastName: true, organization: { select: { name: true } } } },
+          department: { select: { organization: { select: { name: true } } } },
+        },
+      },
       verification: true,
     },
   });
@@ -116,6 +127,11 @@ export async function verify(certificateCode: string) {
     certificateCode: certificate.certificateCode,
     participantName: `${certificate.user.firstName} ${certificate.user.lastName}`,
     workshopTitle: certificate.workshop.title,
+    organizerName: `${certificate.workshop.organizer.firstName} ${certificate.workshop.organizer.lastName}`,
+    organizationName:
+      certificate.workshop.department?.organization.name ??
+      certificate.workshop.organizer.organization?.name ??
+      null,
     attendancePercentage: certificate.attendancePercentage,
     issuedAt: certificate.issuedAt,
     pdfPath: certificate.pdfPath,

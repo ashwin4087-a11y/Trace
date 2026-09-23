@@ -1,6 +1,6 @@
 import { prisma } from "../../config/database";
 import type { AuthUser } from "../../shared/types/http";
-import { notifyAnnouncement } from "../notifications/notification.service";
+import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 import { assertCanManageWorkshop } from "../workshops/workshop.service";
 
 export async function listAnnouncements(workshopId?: string) {
@@ -20,11 +20,12 @@ export async function createAnnouncement(user: AuthUser, input: { workshopId: st
     where: { workshopId: input.workshopId, status: "CONFIRMED" },
     select: { userId: true },
   });
-  await notifyAnnouncement(
-    registrations.map((item) => item.userId),
-    input.title,
-    input.body,
-    `/workshops/${input.workshopId}`,
-  );
+  await emitWorkshopDomainEvent({
+    type: "ANNOUNCEMENT_PUBLISHED",
+    workshopId: input.workshopId,
+    title: input.title,
+    body: input.body,
+    recipientUserIds: registrations.map((item) => item.userId),
+  });
   return announcement;
 }

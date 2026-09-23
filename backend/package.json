@@ -11,13 +11,15 @@
     "db:migrate": "dotenv -e ../.env -- prisma migrate dev --schema ../database/prisma/schema.prisma",
     "db:deploy": "dotenv -e ../.env -- prisma migrate deploy --schema ../database/prisma/schema.prisma",
     "db:seed": "dotenv -e ../.env -- tsx ../database/seed/seed.ts",
-    "db:reset": "dotenv -e ../.env -- tsx ../database/scripts/reset-db.ts"
+    "db:reset": "dotenv -e ../.env -- tsx ../database/scripts/reset-db.ts",
+    "db:verify": "dotenv -e ../.env -- tsx ../database/scripts/verify-connection.ts",
+    "db:studio": "dotenv -e ../.env -- prisma studio --schema ../database/prisma/schema.prisma --browser none"
   },
   "prisma": {
     "schema": "../database/prisma/schema.prisma"
   },
   "dependencies": {
-    "@prisma/client": "^6.16.2",
+    "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.2",
     "bullmq": "^5.58.5",
     "cookie-parser": "^1.4.7",
@@ -46,7 +48,7 @@
     "@types/pdfkit": "^0.17.3",
     "@types/qrcode": "^1.5.5",
     "dotenv-cli": "^10.0.0",
-    "prisma": "^6.16.2",
+    "prisma": "^6.19.3",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }

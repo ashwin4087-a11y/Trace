@@ -4,7 +4,7 @@ export type ProfileSignals = {
   year?: string | null;
   skills: string[];
   interests: string[];
-  language: string;
+  language: string
 };
 
 export type WorkshopSignals = {

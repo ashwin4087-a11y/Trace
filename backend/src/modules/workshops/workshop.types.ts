@@ -2,24 +2,32 @@ import type { AcademicDomain, DeliveryMode, PreferredLanguage, ProficiencyLevel,
 
 export type WorkshopWriteInput = {
   title: string;
+  slug?: string;
   description: string;
+  shortDescription?: string | null;
+  bannerImage?: string | null;
   category: string;
   domain: AcademicDomain;
   departmentId?: string | null;
+  organizationId?: string | null;
   level: ProficiencyLevel;
   skills?: string[];
   trainerName: string;
+  trainerProfile?: string | null;
   startDate: string;
   endDate: string;
   durationHours: number;
   mode: DeliveryMode;
+  location?: string | null;
   capacity: number;
   waitlistEnabled?: boolean;
   registrationDeadline: string;
   language: PreferredLanguage;
   meetingUrl?: string | null;
   venue?: string | null;
+  price?: number;
   priceCents?: number;
   currency?: string;
+  certificateEnabled?: boolean;
   status?: WorkshopStatus;
 };

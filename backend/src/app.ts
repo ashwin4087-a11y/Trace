@@ -10,11 +10,11 @@ import { activityRouter } from "./modules/activities/activity.routes";
 import { analyticsRouter } from "./modules/analytics/analytics.routes";
 import { announcementRouter } from "./modules/announcements/announcement.routes";
 import { assessmentRouter } from "./modules/assessments/assessment.routes";
-import { attendanceRouter } from "./modules/attendance/attendance.routes";
+import { attendanceRoutes as attendanceRouter } from "./modules/attendance/attendance.routes";
 import { auditRouter } from "./modules/audit/audit.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { certificateRouter } from "./modules/certificates/certificate.routes";
-import { checkoutRouter } from "./modules/checkout/checkout.routes";
+import { orderRouter } from "./modules/orders/order.routes";
 import { communityRouter } from "./modules/communities/community.routes";
 import { departmentRouter } from "./modules/departments/department.routes";
 import { learningRouter } from "./modules/learning/learning.routes";
@@ -93,7 +93,7 @@ export function createApp() {
   app.use("/api/profiles", profileRouter);
   app.use("/api/workshops", workshopRouter);
   app.use("/api/registrations", registrationRouter);
-  app.use("/api/checkout", checkoutRouter);
+  app.use("/api/orders", orderRouter);
   app.use("/api/payments", paymentRouter);
   app.use("/api/sessions", sessionRouter);
   app.use("/api/learning", learningRouter);
@@ -116,3 +116,4 @@ export function createApp() {
   app.use(errorHandler);
   return app;
 }
+

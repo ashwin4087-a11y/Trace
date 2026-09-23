@@ -1,9 +1,17 @@
 import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../config/database";
+import { mockUserFromEnv } from "../shared/auth/dev-user.adapter";
 import { ApiError } from "../shared/errors/api-error";
 import { verifyAccessToken } from "../shared/utils/tokens";
+import { env } from "../config/environment";
 
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
+  const mock = mockUserFromEnv({ ...process.env, NODE_ENV: env.nodeEnv });
+  if (mock) {
+    req.user = mock;
+    next();
+    return;
+  }
   try {
     const header = req.headers.authorization;
     if (!header?.startsWith("Bearer ")) {

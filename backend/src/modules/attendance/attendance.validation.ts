@@ -3,9 +3,16 @@ import { z } from "zod";
 export const markSchema = z.object({
   body: z.object({
     sessionId: z.string().uuid(),
-    userId: z.string().uuid(),
+    registrationId: z.string().uuid(),
     status: z.enum(["PRESENT", "ABSENT", "EXCUSED"]),
     note: z.string().optional(),
+  }),
+});
+
+export const bulkMarkSchema = z.object({
+  body: z.object({
+    registrationIds: z.array(z.string().uuid()).min(1),
+    status: z.enum(["PRESENT", "ABSENT"]),
   }),
 });
 

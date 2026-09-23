@@ -5,7 +5,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const styles = {
-  primary: "bg-brand text-white hover:bg-brand-dark",
+  primary: "bg-brand text-white hover:opacity-90",
   secondary: "bg-white text-ink border border-line hover:bg-paper",
   ghost: "bg-transparent text-ink hover:bg-white",
   danger: "bg-danger text-white",

@@ -13,7 +13,6 @@ export async function seedUsers(passwords: { admin: string; organizer: string; p
       lastName: "Admin",
       role: "ADMIN",
       status: "ACTIVE",
-      emailVerified: true,
       emailVerifiedAt: new Date(),
       preferredLanguage: "EN",
       notificationPreference: { create: {} },
@@ -30,7 +29,6 @@ export async function seedUsers(passwords: { admin: string; organizer: string; p
       lastName: "Organizer",
       role: "ORGANIZER",
       status: "ACTIVE",
-      emailVerified: true,
       emailVerifiedAt: new Date(),
       preferredLanguage: "EN_TA",
       notificationPreference: { create: {} },
@@ -47,22 +45,11 @@ export async function seedUsers(passwords: { admin: string; organizer: string; p
       lastName: "Kumar",
       role: "PARTICIPANT",
       status: "ACTIVE",
-      emailVerified: true,
       emailVerifiedAt: new Date(),
       preferredLanguage: "TA",
       notificationPreference: { create: {} },
     },
   });
-
-  for (const user of [admin, organizer, participant]) {
-    const role = await prisma.role.findUnique({ where: { name: user.role } });
-    if (!role) throw new Error(`Missing role seed for ${user.role}`);
-    await prisma.userRole.upsert({
-      where: { userId_roleId: { userId: user.id, roleId: role.id } },
-      update: {},
-      create: { userId: user.id, roleId: role.id },
-    });
-  }
 
   return { admin, organizer, participant };
 }
@@ -76,7 +63,7 @@ export async function seedProfile(userId: string, domain: AcademicDomain, langua
       institution: "AUREX Institute",
       domain,
       departmentName: "Computer Science",
-      year: "SECOND",
+      year: 2,
     },
   });
   await prisma.user.update({ where: { id: userId }, data: { preferredLanguage: language } });

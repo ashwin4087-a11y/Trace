@@ -23,20 +23,84 @@ learningRouter.post("/upload", requireRoles("ORGANIZER", "ADMIN"), upload.single
     next(error);
   }
 });
-learningRouter.post(
-  "/",
+
+// Participant: List published materials for a workshop
+learningRouter.get("/workshops/:workshopId", controller.list);
+
+// Organizer: List all materials for a workshop
+learningRouter.get("/workshops/:workshopId/manage", requireRoles("ORGANIZER", "ADMIN"), controller.manageList);
+
+// Organizer: Reorder materials
+learningRouter.patch(
+  "/workshops/:workshopId/reorder",
   requireRoles("ORGANIZER", "ADMIN"),
   validate(
     z.object({
       body: z.object({
-        workshopId: z.string().uuid(),
-        sessionId: z.string().uuid().optional(),
-        title: z.string().min(2),
-        type: z.enum(["PDF", "PPT", "DOCUMENT", "VIDEO", "URL", "RECORDING"]),
-        url: z.string().min(1),
+        updates: z.array(
+          z.object({
+            id: z.string().uuid(),
+            sortOrder: z.number().min(0),
+          })
+        ),
       }),
-    }),
+    })
   ),
-  controller.create,
+  controller.reorder
 );
+
+// Organizer: Create material
+learningRouter.post(
+  "/workshops/:workshopId",
+  requireRoles("ORGANIZER", "ADMIN"),
+  validate(
+    z.object({
+      body: z.object({
+        sessionId: z.string().uuid().nullable().optional(),
+        title: z.string().min(1).max(200),
+        description: z.string().max(1000).nullable().optional(),
+        type: z.enum(["PDF", "PPT", "DOCUMENT", "VIDEO", "URL", "RECORDING", "IMAGE", "OTHER"]),
+        url: z.string().min(1).max(1000),
+        fileName: z.string().nullable().optional(),
+        mimeType: z.string().nullable().optional(),
+        fileSize: z.number().min(0).nullable().optional(),
+        durationSeconds: z.number().min(0).nullable().optional(),
+      }),
+    })
+  ),
+  controller.create
+);
+
+// Organizer: Update material
+learningRouter.patch(
+  "/:id",
+  requireRoles("ORGANIZER", "ADMIN"),
+  validate(
+    z.object({
+      body: z.object({
+        sessionId: z.string().uuid().nullable().optional(),
+        title: z.string().min(1).max(200).optional(),
+        description: z.string().max(1000).nullable().optional(),
+        type: z.enum(["PDF", "PPT", "DOCUMENT", "VIDEO", "URL", "RECORDING", "IMAGE", "OTHER"]).optional(),
+        url: z.string().min(1).max(1000).optional(),
+        fileName: z.string().nullable().optional(),
+        mimeType: z.string().nullable().optional(),
+        fileSize: z.number().min(0).nullable().optional(),
+        durationSeconds: z.number().min(0).nullable().optional(),
+      }),
+    })
+  ),
+  controller.update
+);
+
+// Organizer: Delete material
 learningRouter.delete("/:id", requireRoles("ORGANIZER", "ADMIN"), controller.remove);
+
+// Organizer: Publish material
+learningRouter.post("/:id/publish", requireRoles("ORGANIZER", "ADMIN"), controller.publish);
+
+// Organizer: Unpublish material
+learningRouter.post("/:id/unpublish", requireRoles("ORGANIZER", "ADMIN"), controller.unpublish);
+
+// Participant/Organizer: Access a material (returns url securely)
+learningRouter.get("/:id/access", controller.access);

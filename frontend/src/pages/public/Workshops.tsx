@@ -1,22 +1,47 @@
-import { useState } from "react";
+﻿import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { SearchBar } from "../../components/common/SearchBar";
-import { Select } from "../../components/common/Select";
 import { Loader } from "../../components/common/Loader";
 import { ErrorState } from "../../components/common/ErrorState";
 import { EmptyState } from "../../components/common/EmptyState";
 import { WorkshopCard } from "../../components/workshops/WorkshopCard";
+import { DomainMultiSelect, type DomainValue } from "../../components/common/DomainMultiSelect";
 import { listWorkshops } from "../../services/workshop.service";
 import { errorText } from "../../lib/errors";
 
 export function WorkshopsPage() {
   const [search, setSearch] = useState("");
-  const [domain, setDomain] = useState("");
+  // appliedDomains = the committed filter (empty = All domains)
+  const [appliedDomains, setAppliedDomains] = useState<DomainValue[]>([]);
+  // pendingDomains = draft inside the multi-select before Apply
+  const [pendingDomains, setPendingDomains] = useState<DomainValue[]>([]);
+
+  // When multiple domains are selected the backend only supports a single
+  // domain= param, so we fetch without a domain filter and apply client-side.
+  // When exactly one domain is selected we pass it to the backend to let the
+  // DB do the work; when zero (All) we also omit the param.
+  const backendDomain =
+    appliedDomains.length === 1 ? appliedDomains[0] : undefined;
+
   const query = useQuery({
-    queryKey: ["workshops", search, domain],
-    queryFn: () => listWorkshops({ search: search || undefined, domain: domain || undefined }),
+    queryKey: ["workshops", search, backendDomain, appliedDomains.length],
+    queryFn: () =>
+      listWorkshops({ search: search || undefined, domain: backendDomain }),
   });
+
+  // Client-side OR filter for multi-domain case
+  const displayed = useMemo(() => {
+    if (!query.data) return [];
+    if (appliedDomains.length <= 1) return query.data; // backend already handled it
+    return query.data.filter((w) =>
+      appliedDomains.includes(w.domain as DomainValue)
+    );
+  }, [query.data, appliedDomains]);
+
+  const handleApply = (values: DomainValue[]) => {
+    setAppliedDomains(values);
+  };
 
   return (
     <MainLayout>
@@ -33,23 +58,27 @@ export function WorkshopsPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[1fr_240px] bg-[#FFFFFF] border border-[#DFC1B0] rounded-lg p-4 shadow-xs">
-          <SearchBar value={search} onChange={setSearch} placeholder="Search title, topic, or instructor..." />
-          <Select label="Domain" value={domain} onChange={(event) => setDomain(event.target.value)}>
-            <option value="">All domains</option>
-            <option value="ENGINEERING">Engineering & Technology</option>
-            <option value="ARTS_SCIENCE">Arts & Science</option>
-            <option value="TAMIL_LANGUAGE">Tamil & Language</option>
-            <option value="OTHER">Interdisciplinary</option>
-          </Select>
+        <div className="grid gap-4 md:grid-cols-[1fr_280px] bg-[#FFFFFF] border border-[#DFC1B0] rounded-lg p-4 shadow-xs">
+          <SearchBar
+            value={search}
+            onChange={setSearch}
+            placeholder="Search title, topic, or instructor..."
+          />
+          <DomainMultiSelect
+            selected={pendingDomains}
+            onChange={setPendingDomains}
+            onApply={handleApply}
+          />
         </div>
 
         {query.isLoading ? <Loader /> : null}
         {query.isError ? <ErrorState message={errorText(query.error)} /> : null}
-        {query.data && query.data.length === 0 ? <EmptyState title="No published workshops found" /> : null}
+        {!query.isLoading && !query.isError && displayed.length === 0 ? (
+          <EmptyState title="No published workshops found" />
+        ) : null}
 
         <div className="grid gap-6 md:grid-cols-3">
-          {query.data?.map((workshop) => (
+          {displayed.map((workshop) => (
             <WorkshopCard key={workshop.id} workshop={workshop} />
           ))}
         </div>

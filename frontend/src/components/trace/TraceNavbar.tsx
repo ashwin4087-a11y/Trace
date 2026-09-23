@@ -161,7 +161,7 @@ export function TraceNavbar() {
             />
             <button
               type="submit"
-              className="px-4 py-1.5 bg-[#BF9270] text-[#FFEDDB] text-xs font-semibold rounded-lg hover:bg-[#261D1A] transition-colors"
+              className="px-4 py-1.5 bg-[#BF9270] text-[#FFEDDB] text-xs font-semibold rounded-lg hover:opacity-90 transition-colors"
             >
               {language === "TA" ? "தேடு" : "Search"}
             </button>

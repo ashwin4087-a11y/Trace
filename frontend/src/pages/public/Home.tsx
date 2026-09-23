@@ -47,7 +47,7 @@ export function HomePage() {
               <div className="flex flex-wrap items-center gap-4 pt-2">
                 <Link
                   to="/workshops"
-                  className="px-6 py-2.5 rounded-lg bg-[#BF9270] text-[#FFEDDB] text-sm font-semibold hover:bg-[#261D1A] transition-colors shadow-xs"
+                  className="px-6 py-2.5 rounded-lg bg-[#BF9270] text-[#FFEDDB] text-sm font-semibold hover:opacity-90 transition-colors shadow-xs"
                 >
                   Browse Workshops
                 </Link>

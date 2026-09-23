@@ -23,3 +23,9 @@ certificateRouter.post(
   validate(z.object({ body: z.object({ participantId: z.string().uuid().optional() }) })),
   controller.generate,
 );
+certificateRouter.get(
+  "/workshops/:workshopId/registrations/:registrationId/eligibility",
+  requireAuth,
+  requireVerified,
+  controller.evaluateEligibility,
+);

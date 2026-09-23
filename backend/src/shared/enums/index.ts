@@ -1,5 +1,5 @@
 export {
-  RoleName,
+  UserRole,
   AccountStatus,
   PreferredLanguage,
   AcademicDomain,

@@ -11,7 +11,7 @@ export async function passport(userId: string) {
   });
   const certificates = await prisma.certificate.findMany({
     where: { userId, status: "ISSUED" },
-    include: { workshop: { include: { skills: { include: { skill: true } } } } },
+    include: { workshop: { include: { workshopSkills: { include: { skill: true } } } } },
   });
   return { skills, certificates };
 }

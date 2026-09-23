@@ -1,33 +1,45 @@
 import { Router } from "express";
-import { z } from "zod";
+import multer from "multer";
 import { requireAuth, requireVerified } from "../../middleware/auth.middleware";
 import { requireRoles } from "../../middleware/rbac.middleware";
 import { validate } from "../../middleware/validation.middleware";
 import * as controller from "./activity.controller";
+import * as schemas from "./activity.validation";
+
+const upload = multer({ 
+  dest: "public/uploads/", 
+  limits: { fileSize: 10 * 1024 * 1024 } 
+});
 
 export const activityRouter = Router();
 
 activityRouter.use(requireAuth, requireVerified);
-activityRouter.get("/", controller.list);
+
+// Participant routes
+activityRouter.get("/workshops/:workshopId", controller.listPublishedActivities);
+activityRouter.get("/:id", controller.getActivityDetails);
+activityRouter.get("/:id/submission", controller.getParticipantSubmission);
 activityRouter.post(
-  "/",
-  requireRoles("ORGANIZER", "ADMIN"),
-  validate(
-    z.object({
-      body: z.object({
-        workshopId: z.string().uuid(),
-        title: z.string().min(2),
-        description: z.string().min(2),
-        type: z.enum(["ASSIGNMENT", "PRACTICAL", "SURVEY", "TASK"]),
-        dueAt: z.string().datetime().optional(),
-      }),
-    }),
-  ),
-  controller.create,
+  "/:id/submission",
+  upload.single("file"),
+  validate(schemas.submitActivitySchema),
+  controller.submitActivity
 );
-activityRouter.post(
-  "/:id/submissions",
-  requireRoles("PARTICIPANT"),
-  validate(z.object({ body: z.object({ content: z.string().min(1) }) })),
-  controller.submit,
-);
+
+// Organizer Routes
+const organizerRouter = Router();
+organizerRouter.use(requireRoles("ORGANIZER", "ADMIN"));
+
+organizerRouter.get("/workshops/:workshopId/manage", controller.listOrganizerActivities);
+organizerRouter.post("/workshops/:workshopId", validate(schemas.createActivitySchema), controller.createActivity);
+organizerRouter.patch("/workshops/:workshopId/reorder", validate(schemas.reorderActivitiesSchema), controller.reorderActivities);
+organizerRouter.patch("/:id", validate(schemas.updateActivitySchema), controller.updateActivity);
+organizerRouter.delete("/:id", controller.deleteActivity);
+organizerRouter.post("/:id/publish", controller.publishActivity);
+organizerRouter.post("/:id/close", controller.closeActivity);
+
+organizerRouter.get("/:id/submissions", controller.listActivitySubmissions);
+organizerRouter.get("/submissions/:id", controller.getSubmissionForOrganizer);
+organizerRouter.post("/submissions/:id/review", validate(schemas.reviewSubmissionSchema), controller.reviewSubmission);
+
+activityRouter.use(organizerRouter);

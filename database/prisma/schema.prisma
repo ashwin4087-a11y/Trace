@@ -7,10 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
-
 enum RoleName {
   ADMIN
   ORGANIZER
@@ -69,30 +65,29 @@ enum DepartmentStatus {
 enum WorkshopStatus {
   DRAFT
   PUBLISHED
-  CANCELLED
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSED
+  ONGOING
   COMPLETED
+  CANCELLED
   ARCHIVED
 }
-
 enum DeliveryMode {
   ONLINE
   OFFLINE
   HYBRID
 }
-
 enum ProficiencyLevel {
   BEGINNER
   INTERMEDIATE
   ADVANCED
 }
-
 enum RegistrationStatus {
   PENDING_PAYMENT
   CONFIRMED
   WAITLISTED
   CANCELLED
 }
-
 enum OrderStatus {
   FREE
   PENDING
@@ -100,21 +95,18 @@ enum OrderStatus {
   FAILED
   CANCELLED
 }
-
 enum PaymentStatus {
   PENDING
   SUCCEEDED
   FAILED
   REFUNDED
 }
-
 enum SessionStatus {
   SCHEDULED
   LIVE
   COMPLETED
   CANCELLED
 }
-
 enum MaterialType {
   PDF
   PPT
@@ -122,48 +114,79 @@ enum MaterialType {
   VIDEO
   URL
   RECORDING
+  IMAGE
+  OTHER
 }
-
+enum MaterialStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
 enum ActivityType {
   ASSIGNMENT
-  PRACTICAL
+  PRACTICAL_TASK
+  PROJECT
   SURVEY
-  TASK
+  EXERCISE
+  RESOURCE_BASED
 }
-
 enum ActivityStatus {
   DRAFT
-  OPEN
+  PUBLISHED
   CLOSED
+  ARCHIVED
 }
-
+enum SubmissionType {
+  TEXT
+  FILE
+  URL
+  TEXT_AND_FILE
+  TEXT_AND_URL
+  NONE
+}
 enum QuestionType {
-  MCQ
-  SHORT_ANSWER
+  MCQ_SINGLE
 }
-
 enum SubmissionStatus {
+  NOT_STARTED
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  COMPLETED
+  RETURNED
+  LATE
+}
+enum AssessmentType {
+  QUIZ
+  MCQ
+  OBJECTIVE
+}
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+enum AttemptStatus {
+  IN_PROGRESS
   SUBMITTED
   GRADED
+  EXPIRED
 }
-
 enum AttendanceStatus {
   PRESENT
   ABSENT
   EXCUSED
 }
-
 enum AttendanceMethod {
   MANUAL
   QR
   CORRECTION
 }
-
 enum CertificateStatus {
   ISSUED
   REVOKED
 }
-
 enum NotificationType {
   WORKSHOP_PUBLISHED
   REGISTRATION_CONFIRMED
@@ -172,26 +195,22 @@ enum NotificationType {
   ANNOUNCEMENT
   SYSTEM
 }
-
 enum CommunityPostType {
   DISCUSSION
   QUESTION
   POLL
   RESOURCE
 }
-
 enum CommunityMemberRole {
   MEMBER
   MODERATOR
   OWNER
 }
-
 enum LearningPathStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
 }
-
 enum AuditAction {
   LOGIN
   LOGOUT
@@ -217,10 +236,6 @@ enum AuditAction {
   DEACTIVATE_ORGANIZER
 }
 
-// ---------------------------------------------------------------------------
-// Identity and access
-// ---------------------------------------------------------------------------
-
 model User {
   id                String            @id @default(uuid())
   name              String?
@@ -240,36 +255,37 @@ model User {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  organization             Organization?            @relation(fields: [organizationId], references: [id])
-  department               Department?              @relation(fields: [departmentId], references: [id])
-  userRoles                UserRole[]
-  organizationMemberships  OrganizationMember[]
-  academicProfile          AcademicProfile?
-  interests                UserInterest[]
-  skills                   UserSkill[]
-  refreshTokens            RefreshToken[]
-  sessions                 UserSession[]
-  emailVerificationTokens  EmailVerificationToken[]
-  passwordResetTokens      PasswordResetToken[]
-  organizedWorkshops       Workshop[]               @relation("WorkshopOrganizer")
-  trainerSessions          WorkshopSession[]        @relation("SessionTrainer")
-  registrations            Registration[]
-  attendanceRecords        Attendance[]             @relation("AttendanceSubject")
-  attendanceRecorded       Attendance[]             @relation("AttendanceRecorder")
-  certificates             Certificate[]
-  notifications            Notification[]
-  notificationPreference   NotificationPreference?
-  communityMemberships     CommunityMember[]
-  communityPosts           CommunityPost[]
-  communityComments        CommunityComment[]
-  pollVotes                CommunityPollVote[]
-  learningPathEnrollments  LearningPathEnrollment[]
-  assessmentSubmissions    AssessmentSubmission[]
-  activitySubmissions      ActivitySubmission[]
-  orders                   Order[]
-  announcements            Announcement[]
-  auditLogs                AuditLog[]               @relation("AuditActor")
-  recommendations          Recommendation[]
+  organization            Organization?            @relation(fields: [organizationId], references: [id])
+  department              Department?              @relation(fields: [departmentId], references: [id])
+  userRoles               UserRole[]
+  organizationMemberships OrganizationMember[]
+  academicProfile         AcademicProfile?
+  interests               UserInterest[]
+  skills                  UserSkill[]
+  refreshTokens           RefreshToken[]
+  sessions                UserSession[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  organizedWorkshops      Workshop[]               @relation("WorkshopOrganizer")
+  trainerSessions         WorkshopSession[]        @relation("SessionTrainer")
+  registrations           Registration[]
+  attendanceRecords       Attendance[]             @relation("AttendanceSubject")
+  attendanceRecorded      Attendance[]             @relation("AttendanceRecorder")
+  certificates            Certificate[]
+  notifications           Notification[]
+  notificationPreference  NotificationPreference?
+  communityMemberships    CommunityMember[]
+  communityPosts          CommunityPost[]
+  communityComments       CommunityComment[]
+  pollVotes               CommunityPollVote[]
+  learningPathEnrollments LearningPathEnrollment[]
+  assessmentAttempts      AssessmentAttempt[]
+  activitySubmissions     ActivitySubmission[]
+  activityReviews         ActivitySubmission[]     @relation("SubmissionReviewer")
+  orders                  Order[]
+  announcements           Announcement[]
+  auditLogs               AuditLog[]               @relation("AuditActor")
+  recommendations         Recommendation[]
 
   @@index([role, status])
   @@index([organizationId])
@@ -366,28 +382,28 @@ model UserSession {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id          String             @id @default(uuid())
+  id          String       @id @default(uuid())
   name        String
   code        String       @unique
   description String?
   status      OrganizationStatus @default(ACTIVE)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   departments Department[]
   users       User[]
   members     OrganizationMember[]
 }
 
 model Department {
-  id             String           @id @default(uuid())
+  id             String       @id @default(uuid())
   organizationId String
   name           String
   code           String
   description    String?
   status         DepartmentStatus @default(ACTIVE)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   users          User[]
   members        OrganizationMember[]
   workshops      Workshop[]
@@ -413,16 +429,16 @@ model OrganizationMember {
 }
 
 model AcademicProfile {
-  id                String                    @id @default(uuid())
-  userId            String                    @unique
-  institution       String
-  domain            AcademicDomain
-  departmentName    String?
-  year              AcademicYear?
+  id             String         @id @default(uuid())
+  userId         String         @unique
+  institution    String
+  domain         AcademicDomain
+  departmentName String?
+  year           AcademicYear?
   preferredLanguage AcademicPreferredLanguage @default(ENGLISH)
-  createdAt         DateTime                  @default(now())
-  updatedAt         DateTime                  @updatedAt
-  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserInterest {
@@ -466,51 +482,64 @@ model UserSkill {
 // ---------------------------------------------------------------------------
 
 model Workshop {
-  id                   String            @id @default(uuid())
+  id                   String             @id @default(uuid())
   organizerId          String
   departmentId         String?
+  organizationId       String?
   title                String
-  description          String
-  category             String
-  domain               AcademicDomain
-  level                ProficiencyLevel
-  trainerName          String
-  startDate            DateTime
-  endDate              DateTime
-  durationHours        Float
-  mode                 DeliveryMode
-  capacity             Int
-  waitlistEnabled      Boolean           @default(true)
-  registrationDeadline DateTime
-  language             PreferredLanguage
+  slug                 String             @unique
+  description          String?
+  shortDescription     String?
+  bannerImage          String?
+  category             String?
+  domain               AcademicDomain?
+  level                ProficiencyLevel?
+  trainerName          String?
+  trainerProfile       String?
+  startDate            DateTime?
+  endDate              DateTime?
+  durationHours        Float?
+  mode                 DeliveryMode?
+  location             String?
+  capacity             Int?
+  waitlistEnabled      Boolean            @default(true)
+  registrationDeadline DateTime?
+  language             PreferredLanguage?
   meetingUrl           String?
   meetingProvider      String?
   venue                String?
-  priceCents           Int               @default(0)
-  currency             String            @default("INR")
-  status               WorkshopStatus    @default(DRAFT)
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
+  price                Float              @default(0)
+  priceCents           Int                @default(0)
+  currency             String             @default("INR")
+  certificateEnabled   Boolean            @default(false)
+  status               WorkshopStatus     @default(DRAFT)
+  skills               String[]           @default([])
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  publishedAt          DateTime?
+  cancelledAt          DateTime?
 
-  organizer       User                   @relation("WorkshopOrganizer", fields: [organizerId], references: [id])
-  department      Department?            @relation(fields: [departmentId], references: [id])
-  skills          WorkshopSkill[]
-  sessions        WorkshopSession[]
-  registrations   Registration[]
-  materials       LearningMaterial[]
-  activities      Activity[]
-  assessments     Assessment[]
-  announcements   Announcement[]
-  certificates    Certificate[]
-  community       Community?
+  organizer         User                   @relation("WorkshopOrganizer", fields: [organizerId], references: [id])
+  department        Department?            @relation(fields: [departmentId], references: [id])
+  workshopSkills    WorkshopSkill[]
+  sessions          WorkshopSession[]
+  registrations     Registration[]
+  materials         LearningMaterial[]
+  activities        Activity[]
+  assessments       Assessment[]
+  announcements     Announcement[]
+  certificates      Certificate[]
+  community         Community?
   learningPathLinks LearningPathWorkshop[]
-  recommendations Recommendation[]
+  recommendations   Recommendation[]
 
   @@index([status, domain])
   @@index([organizerId])
   @@index([departmentId])
   @@index([language])
   @@index([registrationDeadline])
+  @@index([slug])
+  @@index([organizationId])
 }
 
 model WorkshopSkill {
@@ -535,14 +564,18 @@ model WorkshopSession {
   recordingUrl String?
   venue        String?
   status       SessionStatus @default(SCHEDULED)
-  qrTokenHash  String?       @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  qrTokenHash     String?       @unique
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  sessionNumber   Int?
+  mode            DeliveryMode?
+  meetingProvider String?
 
-  workshop   Workshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  trainer    User?            @relation("SessionTrainer", fields: [trainerId], references: [id])
+  workshop   Workshop           @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  trainer    User?              @relation("SessionTrainer", fields: [trainerId], references: [id])
   attendance Attendance[]
   materials  LearningMaterial[]
+  activities Activity[]
 
   @@index([workshopId, sessionDate])
 }
@@ -551,12 +584,16 @@ model Registration {
   id         String             @id @default(uuid())
   workshopId String
   userId     String
-  status     RegistrationStatus
-  createdAt  DateTime           @default(now())
-  updatedAt  DateTime           @updatedAt
+  status      RegistrationStatus
+  registeredAt DateTime           @default(now())
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
   workshop   Workshop           @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   order      Order?
+  attendance Attendance[]
 
   @@unique([workshopId, userId])
   @@index([userId])
@@ -564,15 +601,15 @@ model Registration {
 }
 
 model Order {
-  id             String      @id @default(uuid())
+  id             String       @id @default(uuid())
   userId         String
-  registrationId String      @unique
+  registrationId String       @unique
   amountCents    Int
   currency       String
   status         OrderStatus
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-  user           User        @relation(fields: [userId], references: [id])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id])
   registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   payment        Payment?
 }
@@ -593,118 +630,198 @@ model Payment {
 }
 
 model LearningMaterial {
-  id         String           @id @default(uuid())
-  workshopId String
-  sessionId  String?
-  title      String
-  type       MaterialType
-  url        String
-  createdAt  DateTime         @default(now())
-  workshop   Workshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  session    WorkshopSession? @relation(fields: [sessionId], references: [id])
+  id              String           @id @default(uuid())
+  workshopId      String
+  sessionId       String?
+  title           String
+  description     String?
+  type            MaterialType
+  url             String
+  fileName        String?
+  mimeType        String?
+  fileSize        Int?
+  durationSeconds Int?
+  sortOrder       Int              @default(0)
+  status          MaterialStatus   @default(DRAFT)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  workshop        Workshop         @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  session         WorkshopSession? @relation(fields: [sessionId], references: [id])
 
   @@index([workshopId])
   @@index([sessionId])
 }
 
 model Activity {
-  id          String               @id @default(uuid())
-  workshopId  String
-  title       String
-  description String
-  type        ActivityType
-  status      ActivityStatus       @default(DRAFT)
-  dueAt       DateTime?
-  createdAt   DateTime             @default(now())
-  workshop    Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  submissions ActivitySubmission[]
+  id             String               @id @default(uuid())
+  workshopId     String
+  sessionId      String?
+  title          String
+  description    String
+  instructions   String?
+  type           ActivityType
+  status         ActivityStatus       @default(DRAFT)
+  sortOrder      Int                  @default(0)
+  isRequired     Boolean              @default(true)
+  dueAt          DateTime?
+  maxScore       Int?
+  submissionType SubmissionType       @default(NONE)
+  resourceUrl    String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  
+  workshop       Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  session        WorkshopSession?     @relation(fields: [sessionId], references: [id])
+  submissions    ActivitySubmission[]
 
   @@index([workshopId])
+  @@index([sessionId])
 }
 
 model ActivitySubmission {
-  id          String   @id @default(uuid())
-  activityId  String
-  userId      String
-  content     String
-  submittedAt DateTime @default(now())
-  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String           @id @default(uuid())
+  activityId    String
+  userId        String
+  textContent   String?
+  submissionUrl String?
+  fileUrl       String?
+  fileName      String?
+  mimeType      String?
+  status        SubmissionStatus @default(NOT_STARTED)
+  score         Int?
+  feedback      String?
+  submittedAt   DateTime?
+  reviewedAt    DateTime?
+  reviewedBy    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  
+  activity      Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer      User?            @relation("SubmissionReviewer", fields: [reviewedBy], references: [id])
 
   @@unique([activityId, userId])
+  @@index([userId])
 }
 
 model Assessment {
-  id          String                 @id @default(uuid())
-  workshopId  String
-  title       String
-  description String?
-  passScore   Int                    @default(50)
-  createdAt   DateTime               @default(now())
-  workshop    Workshop               @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  questions   AssessmentQuestion[]
-  submissions AssessmentSubmission[]
+  id              String                 @id @default(uuid())
+  workshopId      String
+  sessionId       String?
+  title           String
+  description     String?
+  instructions    String?
+  type            AssessmentType         @default(QUIZ)
+  status          AssessmentStatus       @default(DRAFT)
+  durationMinutes Int?
+  passScore       Int                    @default(50)
+  maxAttempts     Int                    @default(1)
+  isRequired      Boolean                @default(true)
+  dueAt           DateTime?
+  sortOrder       Int                    @default(0)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  publishedAt     DateTime?
+  
+  workshop        Workshop               @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  questions       AssessmentQuestion[]
+  attempts        AssessmentAttempt[]
 
   @@index([workshopId])
 }
 
 model AssessmentQuestion {
-  id           String       @id @default(uuid())
+  id           String             @id @default(uuid())
   assessmentId String
   prompt       String
   type         QuestionType
   options      Json?
   correctIndex Int?
-  points       Int          @default(1)
+  points       Int                @default(1)
+  explanation  String?
   sortOrder    Int
-  assessment   Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  
+  assessment   Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers      AssessmentAnswer[]
 
   @@index([assessmentId])
 }
 
-model AssessmentSubmission {
-  id           String           @id @default(uuid())
-  assessmentId String
-  userId       String
-  answers      Json
-  score        Int
-  maxScore     Int
-  status       SubmissionStatus
-  submittedAt  DateTime         @default(now())
-  assessment   Assessment       @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+model AssessmentAttempt {
+  id            String             @id @default(uuid())
+  assessmentId  String
+  userId        String
+  attemptNumber Int
+  status        AttemptStatus      @default(IN_PROGRESS)
+  score         Int?
+  maxScore      Int?
+  percentage    Float?
+  passed        Boolean?
+  startedAt     DateTime           @default(now())
+  submittedAt   DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
 
-  @@unique([assessmentId, userId])
-}
+  assessment    Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers       AssessmentAnswer[]
 
-model Attendance {
-  id           String           @id @default(uuid())
-  sessionId    String
-  userId       String
-  status       AttendanceStatus
-  method       AttendanceMethod
-  note         String?
-  recordedById String?
-  recordedAt   DateTime         @default(now())
-  session      WorkshopSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  user         User             @relation("AttendanceSubject", fields: [userId], references: [id], onDelete: Cascade)
-  recordedBy   User?            @relation("AttendanceRecorder", fields: [recordedById], references: [id])
-
-  @@unique([sessionId, userId])
+  @@unique([assessmentId, userId, attemptNumber])
+  @@index([assessmentId])
   @@index([userId])
 }
 
+model AssessmentAnswer {
+  id                  String             @id @default(uuid())
+  attemptId           String
+  questionId          String
+  selectedOptionIndex Int?
+  isCorrect           Boolean?
+  marksAwarded        Int?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  attempt             AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question            AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+model Attendance {
+  id             String           @id @default(uuid())
+  sessionId      String
+  registrationId String
+  userId         String
+  status         AttendanceStatus
+  method         AttendanceMethod
+  note           String?
+  recordedById   String?
+  recordedAt     DateTime         @default(now())
+  session        WorkshopSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  registration   Registration     @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user           User             @relation("AttendanceSubject", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy     User?            @relation("AttendanceRecorder", fields: [recordedById], references: [id])
+
+  @@unique([sessionId, registrationId])
+  @@index([userId])
+  @@index([sessionId])
+}
+
 model Certificate {
-  id                   String            @id @default(uuid())
-  certificateCode      String            @unique
+  id                   String                   @id @default(uuid())
+  certificateCode      String                   @unique
   userId               String
   workshopId           String
   attendancePercentage Float
-  status               CertificateStatus @default(ISSUED)
+  status               CertificateStatus        @default(ISSUED)
   pdfPath              String?
-  issuedAt             DateTime          @default(now())
-  user                 User              @relation(fields: [userId], references: [id])
-  workshop             Workshop          @relation(fields: [workshopId], references: [id])
+  issuedAt             DateTime                 @default(now())
+  user                 User                     @relation(fields: [userId], references: [id])
+  workshop             Workshop                 @relation(fields: [workshopId], references: [id])
   verification         CertificateVerification?
   skillEvidence        UserSkill[]
 
@@ -721,14 +838,14 @@ model CertificateVerification {
 }
 
 model Announcement {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   workshopId  String?
   authorId    String
   title       String
   body        String
-  publishedAt DateTime @default(now())
+  publishedAt DateTime  @default(now())
   workshop    Workshop? @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  author      User     @relation(fields: [authorId], references: [id])
+  author      User      @relation(fields: [authorId], references: [id])
 
   @@index([workshopId])
   @@index([authorId])
@@ -803,16 +920,16 @@ model CommunityMember {
 }
 
 model CommunityPost {
-  id          String            @id @default(uuid())
+  id          String             @id @default(uuid())
   communityId String
   authorId    String
-  type        CommunityPostType @default(DISCUSSION)
+  type        CommunityPostType  @default(DISCUSSION)
   title       String
   body        String
-  hidden      Boolean           @default(false)
-  createdAt   DateTime          @default(now())
-  community   Community         @relation(fields: [communityId], references: [id], onDelete: Cascade)
-  author      User              @relation(fields: [authorId], references: [id])
+  hidden      Boolean            @default(false)
+  createdAt   DateTime           @default(now())
+  community   Community          @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author      User               @relation(fields: [authorId], references: [id])
   comments    CommunityComment[]
   poll        CommunityPoll?
 
@@ -833,10 +950,10 @@ model CommunityComment {
 }
 
 model CommunityPoll {
-  id      String             @id @default(uuid())
-  postId  String             @unique
+  id      String              @id @default(uuid())
+  postId  String              @unique
   options Json
-  post    CommunityPost      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post    CommunityPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
   votes   CommunityPollVote[]
 }
 
@@ -907,9 +1024,6 @@ model AuditLog {
   action     AuditAction
   entityType String
   entityId   String?
-  targetType String?
-  targetId   String?
-  status     String      @default("SUCCESS")
   metadata   Json?
   createdAt  DateTime    @default(now())
   actor      User?       @relation("AuditActor", fields: [actorId], references: [id])
@@ -917,22 +1031,17 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([actorId])
   @@index([entityType, entityId])
-  @@index([targetType, targetId])
-  @@index([status, createdAt])
 }
 
 model PlatformSetting {
-  id                   String              @id @default("platform")
-  platformName         String              @default("AUREX LMS")
-  defaultLanguage      PreferredLanguage   @default(EN)
-  supportedLanguages   PreferredLanguage[]
-  timezone             String              @default("Asia/Kolkata")
-  registrationOpen     Boolean             @default(true)
-  registrationSettings Json?
-  certificateMinPercent Int                @default(90)
-  certificateDefaults  Json?
-  notificationsEnabled Boolean             @default(true)
-  notificationDefaults Json?
-  maintenanceMode      Boolean             @default(false)
-  updatedAt            DateTime            @updatedAt
+  id                    String              @id @default("platform")
+  platformName          String              @default("AUREX LMS")
+  defaultLanguage       PreferredLanguage   @default(EN)
+  supportedLanguages    PreferredLanguage[]
+  timezone              String              @default("Asia/Kolkata")
+  registrationOpen      Boolean             @default(true)
+  certificateMinPercent Int                 @default(90)
+  notificationsEnabled  Boolean             @default(true)
+  maintenanceMode       Boolean             @default(false)
+  updatedAt             DateTime            @updatedAt
 }

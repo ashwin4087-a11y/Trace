@@ -18,7 +18,7 @@ export async function recommendForUser(userId: string) {
   const registered = new Set(user.registrations.filter((item) => item.status !== "CANCELLED").map((item) => item.workshopId));
   const workshops = await prisma.workshop.findMany({
     where: { status: "PUBLISHED" },
-    include: { skills: { include: { skill: true } }, department: true },
+    include: { workshopSkills: { include: { skill: true } }, department: true },
   });
 
   const ranked = workshops
@@ -35,12 +35,12 @@ export async function recommendForUser(userId: string) {
         },
         {
           id: workshop.id,
-          domain: workshop.domain,
+          domain: workshop.domain!,
           departmentName: workshop.department?.name,
-          level: workshop.level,
-          language: workshop.language,
-          skills: workshop.skills.map((item) => item.skill.name),
-          category: workshop.category,
+          level: workshop.level!,
+          language: workshop.language!,
+          skills: workshop.workshopSkills.map((item) => item.skill.name),
+          category: workshop.category!,
           title: workshop.title,
         },
       );

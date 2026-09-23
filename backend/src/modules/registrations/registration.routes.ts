@@ -15,6 +15,7 @@ registrationRouter.post(
   controller.create,
 );
 registrationRouter.get("/me", controller.mine);
+registrationRouter.get("/:id", controller.getById);
 registrationRouter.get(
   "/",
   requireRoles("ORGANIZER", "ADMIN"),

@@ -5,10 +5,13 @@ import { isCertificateEligible } from "../../shared/utils/attendance";
 import { randomToken } from "../../shared/utils/tokens";
 import { summarize } from "../attendance/attendance.service";
 import { recordAudit } from "../audit/audit.service";
-import { notifyCertificate } from "../notifications/notification.service";
+import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 import { getSettings } from "../settings/settings.service";
 import { assertCanManageWorkshop } from "../workshops/workshop.service";
 import { writeCertificatePdf } from "./certificate.generator";
+import { evaluateCertificateEligibility } from "./eligibility.service";
+
+export const evaluateEligibility = evaluateCertificateEligibility;
 
 export async function generateForParticipant(actor: AuthUser, workshopId: string, participantId: string) {
   if (actor.role === "PARTICIPANT" && actor.id !== participantId) {
@@ -36,13 +39,12 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
     throw new ApiError(403, "NOT_REGISTERED", "Participant is not confirmed for this workshop");
   }
 
-  const summary = await summarize(participantId, workshopId);
-  const settings = await getSettings();
-  if (!isCertificateEligible(summary.percentage, settings.certificateMinPercent)) {
+  const eligibility = await evaluateCertificateEligibility(workshopId, registration.id);
+  if (!eligibility.eligible) {
     throw new ApiError(
       403,
-      "ATTENDANCE_BELOW_THRESHOLD",
-      `Attendance is ${summary.percentage}%. At least ${settings.certificateMinPercent}% is required.`,
+      "NOT_ELIGIBLE",
+      `Participant is not eligible: ${eligibility.reasons.join(" ")}`,
     );
   }
 
@@ -55,7 +57,7 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
     certificateCode,
     participantName: `${participant.firstName} ${participant.lastName}`,
     workshopTitle: workshop.title,
-    attendancePercentage: summary.percentage,
+    attendancePercentage: eligibility.attendancePercentage,
     issuedAt,
   });
 
@@ -64,16 +66,21 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
       certificateCode,
       userId: participantId,
       workshopId,
-      attendancePercentage: summary.percentage,
+      attendancePercentage: eligibility.attendancePercentage,
       pdfPath,
       issuedAt,
       verification: { create: {} },
     },
   });
   await recordAudit(actor.id, "GENERATE_CERTIFICATE", "Certificate", certificate.id, {
-    percentage: summary.percentage,
+    percentage: eligibility.attendancePercentage,
   });
-  await notifyCertificate(participantId, workshop.title, certificateCode);
+  await emitWorkshopDomainEvent({
+    type: "CERTIFICATE_ISSUED",
+    userId: participantId,
+    workshopTitle: workshop.title,
+    certificateCode,
+  });
   return certificate;
 }
 
@@ -97,7 +104,13 @@ export async function verify(certificateCode: string) {
     where: { certificateCode },
     include: {
       user: { select: { firstName: true, lastName: true } },
-      workshop: { select: { title: true } },
+      workshop: {
+        select: {
+          title: true,
+          organizer: { select: { firstName: true, lastName: true, organization: { select: { name: true } } } },
+          department: { select: { organization: { select: { name: true } } } },
+        },
+      },
       verification: true,
     },
   });
@@ -116,6 +129,11 @@ export async function verify(certificateCode: string) {
     certificateCode: certificate.certificateCode,
     participantName: `${certificate.user.firstName} ${certificate.user.lastName}`,
     workshopTitle: certificate.workshop.title,
+    organizerName: `${certificate.workshop.organizer.firstName} ${certificate.workshop.organizer.lastName}`,
+    organizationName:
+      certificate.workshop.department?.organization.name ??
+      certificate.workshop.organizer.organization?.name ??
+      null,
     attendancePercentage: certificate.attendancePercentage,
     issuedAt: certificate.issuedAt,
     pdfPath: certificate.pdfPath,

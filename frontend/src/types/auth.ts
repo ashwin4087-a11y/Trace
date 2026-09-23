@@ -12,4 +12,6 @@ export type AuthUser = {
   emailVerifiedAt: string | null;
   organizationId: string | null;
   departmentId: string | null;
+  roles: Role[];
+  permissions: string[];
 };

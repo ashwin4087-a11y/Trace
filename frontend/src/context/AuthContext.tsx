@@ -6,6 +6,8 @@ import type { AuthUser } from "../types/auth";
 type AuthState = {
   user: AuthUser | null;
   loading: boolean;
+  hasRole: (...roles: AuthUser["role"][]) => boolean;
+  hasPermission: (permission: string) => boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (input: {
     email: string;
@@ -42,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       loading,
+      hasRole: (...roles) => {
+        const assignedRoles = user?.roles?.length ? user.roles : user ? [user.role] : [];
+        return assignedRoles.some((role) => roles.includes(role));
+      },
+      hasPermission: (permission) => user?.permissions?.includes(permission) ?? false,
       login: async (email, password) => {
         const result = await authService.login(email, password);
         setUser(result.user);

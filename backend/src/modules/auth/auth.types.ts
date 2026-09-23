@@ -11,6 +11,8 @@ export type PublicUser = {
   emailVerifiedAt: string | null;
   organizationId: string | null;
   departmentId: string | null;
+  roles: RoleName[];
+  permissions: string[];
 };
 
 export type AuthResult = {

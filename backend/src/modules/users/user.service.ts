@@ -31,7 +31,7 @@ export async function listUsers(input: {
     }),
     prisma.user.count({ where }),
   ]);
-  return { items: items.map(toPublicUser), total };
+  return { items: items.map((user) => toPublicUser(user)), total };
 }
 
 export async function getUser(id: string) {
@@ -54,13 +54,21 @@ export async function updateUser(
 ) {
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing) throw new ApiError(404, "NOT_FOUND", "User not found");
-  const user = await prisma.user.update({ where: { id }, data: input });
-  if (input.role && input.role !== existing.role) {
+  const { role, ...userData } = input;
+  const user = await prisma.user.update({ where: { id }, data: userData });
+  if (role && role !== existing.role) {
+    const assignedRole = await prisma.role.findUnique({ where: { name: role } });
+    if (!assignedRole) throw new ApiError(404, "NOT_FOUND", "Role not found");
+    await prisma.$transaction([
+      prisma.user.update({ where: { id }, data: { role } }),
+      prisma.userRole.deleteMany({ where: { userId: id } }),
+      prisma.userRole.create({ data: { userId: id, roleId: assignedRole.id } }),
+    ]);
     await recordAudit(actorId, "CHANGE_ROLE", "User", id, {
       from: existing.role,
-      to: input.role,
+      to: role,
     });
-    if (input.role === "ORGANIZER") {
+    if (role === "ORGANIZER") {
       await recordAudit(actorId, "CREATE_ORGANIZER", "User", id);
     }
   } else {
@@ -94,6 +102,10 @@ export async function createOrganizer(
       notificationPreference: { create: {} },
     },
   });
+  const organizerRole = await prisma.role.findUnique({ where: { name: "ORGANIZER" } });
+  if (organizerRole) {
+    await prisma.userRole.create({ data: { userId: user.id, roleId: organizerRole.id } });
+  }
   await recordAudit(actorId, "CREATE_ORGANIZER", "User", user.id);
   return toPublicUser(user);
 }

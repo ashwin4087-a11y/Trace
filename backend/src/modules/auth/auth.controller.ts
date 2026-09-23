@@ -23,7 +23,7 @@ export const logout = asyncHandler(async (req, res) => {
 });
 
 export const verifyEmail = asyncHandler(async (req, res) => {
-  await auth.verifyEmail(req.body.token);
+  await auth.verifyEmail(req.query.token as string);
   res.json({ success: true, data: { verified: true } });
 });
 

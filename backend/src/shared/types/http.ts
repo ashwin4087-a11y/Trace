@@ -7,6 +7,8 @@ export type AuthUser = {
   status: AccountStatus;
   organizationId: string | null;
   departmentId: string | null;
+  roles: RoleName[];
+  permissions: string[];
 };
 
 export type ApiSuccess<T> = {

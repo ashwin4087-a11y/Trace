@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import type { User } from "@prisma/client";
+import type { RoleName, User } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { env } from "../../config/environment";
 import { sendEmail } from "../../integrations/email/email.provider";
@@ -18,7 +18,23 @@ import { recordAudit } from "../audit/audit.service";
 
 const REFRESH_COOKIE = "refreshToken";
 
-export function toPublicUser(user: User): PublicUser {
+type AccessAssignment = {
+  role: {
+    name: RoleName;
+    permissions: { permission: { key: string } }[];
+  };
+};
+
+function accessFor(assignments: AccessAssignment[] | undefined, fallback: RoleName) {
+  const roles = assignments?.length ? assignments.map((assignment) => assignment.role.name) : [fallback];
+  const permissions = assignments?.flatMap((assignment) =>
+    assignment.role.permissions.map((rolePermission) => rolePermission.permission.key),
+  ) ?? [];
+  return { roles: [...new Set(roles)], permissions: [...new Set(permissions)] };
+}
+
+export function toPublicUser(user: User, assignments?: AccessAssignment[]): PublicUser {
+  const access = accessFor(assignments, user.role);
   return {
     id: user.id,
     email: user.email,
@@ -30,7 +46,18 @@ export function toPublicUser(user: User): PublicUser {
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
     organizationId: user.organizationId,
     departmentId: user.departmentId,
+    roles: access.roles,
+    permissions: access.permissions,
   };
+}
+
+async function publicUserById(userId: string): Promise<PublicUser> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { userRoles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } },
+  });
+  if (!user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+  return toPublicUser(user, user.userRoles);
 }
 
 export function setRefreshCookie(res: Response, token: string) {
@@ -63,7 +90,7 @@ async function issueSession(user: User, res: Response): Promise<AuthResult> {
   setRefreshCookie(res, rawRefresh);
   return {
     accessToken: signAccessToken({ sub: user.id, role: user.role }),
-    user: toPublicUser(user),
+    user: await publicUserById(user.id),
   };
 }
 
@@ -90,6 +117,10 @@ export async function register(input: {
       notificationPreference: { create: {} },
     },
   });
+  const participantRole = await prisma.role.findUnique({ where: { name: "PARTICIPANT" } });
+  if (participantRole) {
+    await prisma.userRole.create({ data: { userId: user.id, roleId: participantRole.id } });
+  }
   const token = randomToken();
   await prisma.emailVerificationToken.create({
     data: {
@@ -105,7 +136,10 @@ export async function register(input: {
 }
 
 export async function login(email: string, password: string, res: Response) {
-  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  const user = await prisma.user.findUnique({
+    where: { email: email.toLowerCase() },
+    include: { userRoles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } },
+  });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
@@ -209,7 +243,5 @@ export async function resetPassword(token: string, password: string) {
 }
 
 export async function currentUser(userId: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
-  return toPublicUser(user);
+  return publicUserById(userId);
 }

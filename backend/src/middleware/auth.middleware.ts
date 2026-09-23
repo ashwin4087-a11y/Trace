@@ -10,7 +10,16 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     }
     const payload = verifyAccessToken(header.slice(7));
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    const user = await prisma.user.findUnique({
+      where: { id: payload.sub },
+      include: {
+        userRoles: {
+          include: {
+            role: { include: { permissions: { include: { permission: true } } } },
+          },
+        },
+      },
+    });
     if (!user) {
       throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     }
@@ -24,6 +33,10 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       status: user.status,
       organizationId: user.organizationId,
       departmentId: user.departmentId,
+      roles: user.userRoles.length ? user.userRoles.map((assignment) => assignment.role.name) : [user.role],
+      permissions: user.userRoles.flatMap((assignment) =>
+        assignment.role.permissions.map((rolePermission) => rolePermission.permission.key),
+      ),
     };
     next();
   } catch (error) {

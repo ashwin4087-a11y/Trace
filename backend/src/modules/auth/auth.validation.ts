@@ -24,6 +24,12 @@ export const tokenSchema = z.object({
   }),
 });
 
+export const verifyEmailSchema = z.object({
+  query: z.object({
+    token: z.string().min(20),
+  }),
+});
+
 export const forgotSchema = z.object({
   body: z.object({
     email: z.string().email(),

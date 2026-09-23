@@ -30,8 +30,9 @@ async function connectSkills(names: string[]) {
 export async function assertCanManageWorkshop(user: AuthUser, workshopId: string) {
   const workshop = await prisma.workshop.findUnique({ where: { id: workshopId } });
   if (!workshop) throw new ApiError(404, "NOT_FOUND", "Workshop not found");
-  if (user.role === "ADMIN") return workshop;
-  if (user.role === "ORGANIZER" && workshop.organizerId === user.id) return workshop;
+  const roles = user.roles.length ? user.roles : [user.role];
+  if (roles.includes("ADMIN")) return workshop;
+  if (roles.includes("ORGANIZER") && workshop.organizerId === user.id) return workshop;
   throw new ApiError(403, "FORBIDDEN", "You can only manage your own workshops");
 }
 
@@ -45,15 +46,16 @@ export async function listWorkshops(user: AuthUser | undefined, query: {
   mine?: boolean;
 }) {
   const where: Prisma.WorkshopWhereInput = {};
-  if (!user || user.role === "PARTICIPANT") {
+  const roles = user?.roles.length ? user.roles : user ? [user.role] : [];
+  if (!user || roles.includes("PARTICIPANT")) {
     where.status = "PUBLISHED";
-  } else if (user.role === "ORGANIZER") {
+  } else if (roles.includes("ORGANIZER") && !roles.includes("ADMIN")) {
     where.organizerId = user.id;
     if (query.status) where.status = query.status;
   } else if (query.status) {
     where.status = query.status;
   }
-  if (query.mine && user?.role === "ORGANIZER") where.organizerId = user.id;
+  if (query.mine && user && roles.includes("ORGANIZER")) where.organizerId = user.id;
   if (query.domain) where.domain = query.domain as AcademicDomain;
   if (query.language) where.language = query.language as PreferredLanguage;
   if (query.search) {
@@ -87,8 +89,9 @@ export async function getWorkshop(user: AuthUser | undefined, id: string) {
     },
   });
   if (!workshop) throw new ApiError(404, "NOT_FOUND", "Workshop not found");
+  const roles = user?.roles.length ? user.roles : user ? [user.role] : [];
   const canSeeDraft =
-    user && (user.role === "ADMIN" || (user.role === "ORGANIZER" && workshop.organizerId === user.id));
+    user && (roles.includes("ADMIN") || (roles.includes("ORGANIZER") && workshop.organizerId === user.id));
   if (workshop.status !== "PUBLISHED" && !canSeeDraft) {
     throw new ApiError(404, "NOT_FOUND", "Workshop not found");
   }

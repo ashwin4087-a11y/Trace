@@ -61,12 +61,16 @@ export async function processSessionReminders(
 export function startSessionReminderScheduler(): NodeJS.Timeout {
   // Run once shortly after startup so reminders aren't delayed an extra hour
   setTimeout(() => {
-    void processSessionReminders();
+    processSessionReminders().catch((err) => {
+      console.error("[session-reminder] Initial run failed:", err instanceof Error ? err.message : err);
+    });
   }, 5_000);
 
   const interval = setInterval(
     () => {
-      void processSessionReminders();
+      processSessionReminders().catch((err) => {
+        console.error("[session-reminder] Interval run failed:", err instanceof Error ? err.message : err);
+      });
     },
     60 * 60 * 1000, // every 1 hour
   );

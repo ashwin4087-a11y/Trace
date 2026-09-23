@@ -2,7 +2,10 @@
   "name": "aurex-lms-platform",
   "version": "0.1.0",
   "private": true,
-  "workspaces": ["frontend", "backend"],
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
   "description": "AUREX 2026 Track 01 — LMS / LLL workshop and learning portal",
   "scripts": {
     "dev": "concurrently -n api,web -c blue,green \"npm run dev --prefix backend\" \"npm run dev --prefix frontend\"",
@@ -18,6 +21,10 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.2",
+    "prisma": "^6.19.3",
     "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3"
   }
 }

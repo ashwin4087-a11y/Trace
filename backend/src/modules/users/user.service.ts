@@ -1,4 +1,4 @@
-import type { AccountStatus, Prisma, RoleName } from "@prisma/client";
+import type { AccountStatus, Prisma, UserRole } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import { hashPassword } from "../../shared/utils/tokens";
@@ -6,19 +6,14 @@ import { recordAudit } from "../audit/audit.service";
 import { toPublicUser } from "../auth/auth.service";
 
 const userAccessInclude = {
-  userRoles: {
-    include: {
-      role: { include: { permissions: { include: { permission: true } } } },
-    },
-  },
-  organization: { select: { id: true, name: true, code: true, status: true } },
-  department: { select: { id: true, name: true, code: true, status: true } },
+  organization: { select: { id: true, name: true, code: true } },
+  department: { select: { id: true, name: true, code: true } },
 } satisfies Prisma.UserInclude;
 
 type AdminUser = Prisma.UserGetPayload<{ include: typeof userAccessInclude }>;
 
 function toAdminUser(user: AdminUser) {
-  const safe = toPublicUser(user, user.userRoles);
+  const safe = toPublicUser(user);
   return {
     ...safe,
     roles: safe.roles,
@@ -27,7 +22,7 @@ function toAdminUser(user: AdminUser) {
   };
 }
 
-async function assertAdminCanModify(actorId: string, targetId: string, nextRole?: RoleName, nextStatus?: AccountStatus) {
+async function assertAdminCanModify(actorId: string, targetId: string, nextRole?: UserRole, nextStatus?: AccountStatus) {
   const actor = await prisma.user.findUnique({ where: { id: actorId }, select: { role: true, status: true } });
   if (!actor) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
   const target = await prisma.user.findUnique({ where: { id: targetId }, select: { role: true, status: true } });
@@ -50,13 +45,13 @@ export async function listUsers(input: {
   page: number;
   pageSize: number;
   search?: string;
-  role?: RoleName;
+  role?: UserRole;
   status?: AccountStatus;
   organizationId?: string;
   departmentId?: string;
 }) {
   const where: Prisma.UserWhereInput = {};
-  if (input.role) where.userRoles = { some: { role: { name: input.role } } };
+  if (input.role) where.role = input.role;
   if (input.status) where.status = input.status;
   if (input.organizationId) where.organizationId = input.organizationId;
   if (input.departmentId) where.departmentId = input.departmentId;
@@ -65,7 +60,6 @@ export async function listUsers(input: {
       { email: { contains: input.search, mode: "insensitive" } },
       { firstName: { contains: input.search, mode: "insensitive" } },
       { lastName: { contains: input.search, mode: "insensitive" } },
-      { name: { contains: input.search, mode: "insensitive" } },
     ];
   }
   const [items, total] = await Promise.all([
@@ -84,21 +78,10 @@ export async function listUsers(input: {
 export async function getUser(id: string) {
   const user = await prisma.user.findUnique({
     where: { id },
-    include: {
-      ...userAccessInclude,
-      organizationMemberships: {
-        include: {
-          organization: { select: { id: true, name: true, code: true, status: true } },
-          department: { select: { id: true, name: true, code: true, status: true } },
-        },
-      },
-    },
+    include: userAccessInclude,
   });
   if (!user) throw new ApiError(404, "NOT_FOUND", "User not found");
-  return {
-    ...toAdminUser(user),
-    memberships: user.organizationMemberships,
-  };
+  return toAdminUser(user);
 }
 
 export async function updateUser(
@@ -107,8 +90,6 @@ export async function updateUser(
   input: {
     firstName?: string;
     lastName?: string;
-    name?: string | null;
-    phone?: string | null;
     organizationId?: string | null;
     departmentId?: string | null;
     preferredLanguage?: "EN" | "TA" | "EN_TA";
@@ -116,23 +97,17 @@ export async function updateUser(
 ) {
   const existing = await prisma.user.findUnique({ where: { id }, select: { role: true, status: true } });
   if (!existing) throw new ApiError(404, "NOT_FOUND", "User not found");
-  const user = await prisma.user.update({ where: { id }, data: input });
+  await prisma.user.update({ where: { id }, data: input });
   await recordAudit(actorId, "UPDATE_USER", "User", id);
   return getUser(id);
 }
 
-export async function assignRole(actorId: string, id: string, role: RoleName) {
+export async function assignRole(actorId: string, id: string, role: UserRole) {
   const existing = await prisma.user.findUnique({ where: { id }, select: { role: true, status: true } });
   if (!existing) throw new ApiError(404, "NOT_FOUND", "User not found");
   if (existing.role === role) return getUser(id);
   await assertAdminCanModify(actorId, id, role);
-  const assignedRole = await prisma.role.findUnique({ where: { name: role } });
-  if (!assignedRole) throw new ApiError(404, "NOT_FOUND", "Role not found");
-  await prisma.$transaction([
-    prisma.user.update({ where: { id }, data: { role } }),
-    prisma.userRole.deleteMany({ where: { userId: id } }),
-    prisma.userRole.create({ data: { userId: id, roleId: assignedRole.id } }),
-  ]);
+  await prisma.user.update({ where: { id }, data: { role } });
   await recordAudit(actorId, "CHANGE_ROLE", "User", id, { from: existing.role, to: role });
   return getUser(id);
 }
@@ -162,10 +137,6 @@ export async function createOrganizer(
       notificationPreference: { create: {} },
     },
   });
-  const organizerRole = await prisma.role.findUnique({ where: { name: "ORGANIZER" } });
-  if (organizerRole) {
-    await prisma.userRole.create({ data: { userId: user.id, roleId: organizerRole.id } });
-  }
   await recordAudit(actorId, "CREATE_ORGANIZER", "User", user.id);
   return toPublicUser(user);
 }
@@ -178,3 +149,4 @@ export async function setStatus(actorId: string, id: string, status: AccountStat
   await recordAudit(actorId, status === "SUSPENDED" ? "SUSPEND_USER" : "UPDATE_USER", "User", id, { status });
   return getUser(id);
 }
+

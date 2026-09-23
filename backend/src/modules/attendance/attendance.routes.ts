@@ -20,7 +20,7 @@ router.post("/sessions/:sessionId/attendance/qr/generate", attendance.generateQr
 router.post("/sessions/:sessionId/attendance/qr/close", attendance.closeQr);
 
 // Participant routes
-router.post("/attendance/qr", validate(schemas.qrSchema), attendance.qr);
+router.post("/qr", validate(schemas.qrSchema), attendance.qr);
 router.get("/workshops/:workshopId/attendance/summary", attendance.summary);
 router.get("/attendance/me", attendance.mine);
 

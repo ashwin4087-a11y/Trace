@@ -1,5 +1,5 @@
 import type { Response } from "express";
-import type { RoleName, User } from "@prisma/client";
+import type { UserRole, User } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { env } from "../../config/environment";
 import { sendEmail } from "../../integrations/email/email.provider";
@@ -16,41 +16,27 @@ import {
 import type { AuthResult, PublicUser } from "./auth.types";
 import { recordAudit } from "../audit/audit.service";
 
+import { ROLE_PERMISSIONS } from "../../shared/constants";
+
 const REFRESH_COOKIE = "refreshToken";
 
-export type AccessAssignment = {
-  role: {
-    name: RoleName;
-    permissions: { permission: { key: string } }[];
-  };
-};
-
-function accessFor(assignments: AccessAssignment[] | undefined, fallback: RoleName) {
-  const roles = assignments?.length ? assignments.map((assignment) => assignment.role.name) : [fallback];
-  const permissions = assignments?.flatMap((assignment) =>
-    assignment.role.permissions.map((rolePermission) => rolePermission.permission.key),
-  ) ?? [];
-  return { roles: [...new Set(roles)], permissions: [...new Set(permissions)] };
-}
-
-export function toPublicUser(user: User, assignments?: AccessAssignment[]): PublicUser {
-  const access = accessFor(assignments, user.role);
+export function toPublicUser(user: User): PublicUser {
   return {
     id: user.id,
-    name: user.name,
+    name: `${user.firstName} ${user.lastName}`.trim(),
     email: user.email,
     firstName: user.firstName,
     lastName: user.lastName,
-    phone: user.phone,
+    phone: null,
     role: user.role,
     status: user.status,
-    emailVerified: user.emailVerified,
+    emailVerified: Boolean(user.emailVerifiedAt),
     preferredLanguage: user.preferredLanguage,
     emailVerifiedAt: user.emailVerifiedAt?.toISOString() ?? null,
     organizationId: user.organizationId,
     departmentId: user.departmentId,
-    roles: access.roles,
-    permissions: access.permissions,
+    roles: [user.role],
+    permissions: ROLE_PERMISSIONS[user.role] || [],
     createdAt: user.createdAt.toISOString(),
     updatedAt: user.updatedAt.toISOString(),
   };
@@ -59,10 +45,9 @@ export function toPublicUser(user: User, assignments?: AccessAssignment[]): Publ
 async function publicUserById(userId: string): Promise<PublicUser> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    include: { userRoles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } },
   });
   if (!user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
-  return toPublicUser(user, user.userRoles);
+  return toPublicUser(user);
 }
 
 export function setRefreshCookie(res: Response, token: string) {
@@ -122,10 +107,6 @@ export async function register(input: {
       notificationPreference: { create: {} },
     },
   });
-  const participantRole = await prisma.role.findUnique({ where: { name: "PARTICIPANT" } });
-  if (participantRole) {
-    await prisma.userRole.create({ data: { userId: user.id, roleId: participantRole.id } });
-  }
   const token = randomToken();
   await prisma.emailVerificationToken.create({
     data: {
@@ -143,13 +124,12 @@ export async function register(input: {
 export async function login(email: string, password: string, res: Response) {
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
-    include: { userRoles: { include: { role: { include: { permissions: { include: { permission: true } } } } } } },
   });
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
-  if (user.status === "SUSPENDED" || user.status === "DEACTIVATED") {
-    throw new ApiError(403, "ACCOUNT_DISABLED", "This account is not active");
+  if (user.status === "SUSPENDED") {
+    throw new ApiError(403, "ACCOUNT_DISABLED", "This account is suspended");
   }
   const session = await issueSession(user, res);
   await recordAudit(user.id, "LOGIN", "User", user.id);
@@ -204,7 +184,7 @@ export async function verifyEmail(token: string) {
     }),
     prisma.user.update({
       where: { id: record.userId },
-      data: { status: "ACTIVE", emailVerified: true, emailVerifiedAt: new Date() },
+      data: { status: "ACTIVE", emailVerifiedAt: new Date() },
     }),
   ]);
 }
@@ -250,3 +230,4 @@ export async function resetPassword(token: string, password: string) {
 export async function currentUser(userId: string) {
   return publicUserById(userId);
 }
+

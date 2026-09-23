@@ -5,6 +5,8 @@ import { ApiError } from "../shared/errors/api-error";
 import { verifyAccessToken } from "../shared/utils/tokens";
 import { env } from "../config/environment";
 
+import { ROLE_PERMISSIONS } from "../shared/constants";
+
 export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const mock = mockUserFromEnv({ ...process.env, NODE_ENV: env.nodeEnv });
   if (mock) {
@@ -35,7 +37,7 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       organizationId: user.organizationId,
       departmentId: user.departmentId,
       roles: [user.role],
-      permissions: [],
+      permissions: ROLE_PERMISSIONS[user.role] || [],
     };
     next();
   } catch (error) {

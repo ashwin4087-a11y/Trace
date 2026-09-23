@@ -1,20 +1,20 @@
-import type { AccountStatus, PreferredLanguage, RoleName } from "@prisma/client";
+import type { AccountStatus, PreferredLanguage, UserRole } from "@prisma/client";
 
 export type PublicUser = {
   id: string;
-  name: string | null;
+  name: string;
   email: string;
   firstName: string;
   lastName: string;
   phone: string | null;
-  role: RoleName;
+  role: UserRole;
   status: AccountStatus;
   emailVerified: boolean;
   preferredLanguage: PreferredLanguage;
   emailVerifiedAt: string | null;
   organizationId: string | null;
   departmentId: string | null;
-  roles: RoleName[];
+  roles: UserRole[];
   permissions: string[];
   createdAt: string;
   updatedAt: string;
@@ -24,3 +24,4 @@ export type AuthResult = {
   accessToken: string;
   user: PublicUser;
 };
+

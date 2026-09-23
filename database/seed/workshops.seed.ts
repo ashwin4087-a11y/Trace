@@ -25,6 +25,7 @@ export async function seedWorkshop(organizerId: string, departmentId: string) {
       organizerId,
       departmentId,
       title: "Linux Fundamentals for Cybersecurity",
+      slug: "linux-fundamentals-for-cybersecurity",
       description: "A hands-on beginner workshop covering the Linux shell, users, permissions, and basic network tools.",
       category: "Cybersecurity",
       domain: "ENGINEERING",
@@ -43,7 +44,7 @@ export async function seedWorkshop(organizerId: string, departmentId: string) {
       priceCents: 0,
       currency: "INR",
       status: "PUBLISHED",
-      skills: { create: [{ skillId: linux.id }, { skillId: networking.id }] },
+      workshopSkills: { create: [{ skillId: linux.id }, { skillId: networking.id }] },
       community: {
         create: {
           name: "Linux Fundamentals community",

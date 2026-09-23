@@ -48,7 +48,9 @@ export function buildDiscoveryQuery(user: AuthUser | undefined, query: ListWorks
   if (query.language) where.language = query.language as any;
   if (query.mode) where.mode = query.mode as any;
   if (query.level) where.level = query.level as any;
-  if (query.certificateEnabled !== undefined) where.certificateEnabled = query.certificateEnabled;
+  if (query.certificateEnabled !== undefined) {
+    where.certificateEnabled = query.certificateEnabled === "true" || query.certificateEnabled === true;
+  }
 
   // Price filters
   if (query.price === "free") where.priceCents = 0;

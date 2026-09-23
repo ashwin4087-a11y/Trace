@@ -8,7 +8,7 @@ export const list = asyncHandler(async (req, res) => {
     pageSize: number;
     search?: string;
     role?: "ADMIN" | "ORGANIZER" | "PARTICIPANT";
-    status?: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED" | "DEACTIVATED";
+    status?: "PENDING_VERIFICATION" | "ACTIVE" | "SUSPENDED";
     organizationId?: string;
     departmentId?: string;
   };
@@ -45,3 +45,4 @@ export const role = asyncHandler(async (req, res) => {
 export const createOrganizer = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: await users.createOrganizer(req.user!.id, req.body) });
 });
+

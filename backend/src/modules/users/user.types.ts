@@ -1,9 +1,10 @@
-import type { AccountStatus, RoleName } from "@prisma/client";
+import type { AccountStatus, UserRole } from "@prisma/client";
 
 export type UserListFilters = {
   page: number;
   pageSize: number;
   search?: string;
-  role?: RoleName;
+  role?: UserRole;
   status?: AccountStatus;
 };
+

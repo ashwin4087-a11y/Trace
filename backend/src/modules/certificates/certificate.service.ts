@@ -9,6 +9,9 @@ import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 import { getSettings } from "../settings/settings.service";
 import { assertCanManageWorkshop } from "../workshops/workshop.service";
 import { writeCertificatePdf } from "./certificate.generator";
+import { evaluateCertificateEligibility } from "./eligibility.service";
+
+export const evaluateEligibility = evaluateCertificateEligibility;
 
 export async function generateForParticipant(actor: AuthUser, workshopId: string, participantId: string) {
   if (actor.role === "PARTICIPANT" && actor.id !== participantId) {
@@ -36,13 +39,12 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
     throw new ApiError(403, "NOT_REGISTERED", "Participant is not confirmed for this workshop");
   }
 
-  const summary = await summarize(participantId, workshopId);
-  const settings = await getSettings();
-  if (!isCertificateEligible(summary.percentage, settings.certificateMinPercent)) {
+  const eligibility = await evaluateCertificateEligibility(workshopId, registration.id);
+  if (!eligibility.eligible) {
     throw new ApiError(
       403,
-      "ATTENDANCE_BELOW_THRESHOLD",
-      `Attendance is ${summary.percentage}%. At least ${settings.certificateMinPercent}% is required.`,
+      "NOT_ELIGIBLE",
+      `Participant is not eligible: ${eligibility.reasons.join(" ")}`,
     );
   }
 
@@ -55,7 +57,7 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
     certificateCode,
     participantName: `${participant.firstName} ${participant.lastName}`,
     workshopTitle: workshop.title,
-    attendancePercentage: summary.percentage,
+    attendancePercentage: eligibility.attendancePercentage,
     issuedAt,
   });
 
@@ -64,14 +66,14 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
       certificateCode,
       userId: participantId,
       workshopId,
-      attendancePercentage: summary.percentage,
+      attendancePercentage: eligibility.attendancePercentage,
       pdfPath,
       issuedAt,
       verification: { create: {} },
     },
   });
   await recordAudit(actor.id, "GENERATE_CERTIFICATE", "Certificate", certificate.id, {
-    percentage: summary.percentage,
+    percentage: eligibility.attendancePercentage,
   });
   await emitWorkshopDomainEvent({
     type: "CERTIFICATE_ISSUED",

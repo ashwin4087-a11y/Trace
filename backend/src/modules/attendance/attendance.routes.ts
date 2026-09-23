@@ -16,6 +16,9 @@ router.post("/sessions/:sessionId/attendance/bulk", validate(schemas.bulkMarkSch
 router.post("/attendance", validate(schemas.markSchema), attendance.mark);
 router.patch("/attendance/:id", validate(schemas.correctSchema), attendance.correct);
 
+router.post("/sessions/:sessionId/attendance/qr/generate", attendance.generateQr);
+router.post("/sessions/:sessionId/attendance/qr/close", attendance.closeQr);
+
 // Participant routes
 router.post("/attendance/qr", validate(schemas.qrSchema), attendance.qr);
 router.get("/workshops/:workshopId/attendance/summary", attendance.summary);

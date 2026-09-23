@@ -41,6 +41,8 @@ export function registerWorkshopEngagement() {
       await notifyCertificate(event.userId, event.workshopTitle, event.certificateCode);
       return;
     }
-    await notifyAnnouncement(event.recipientUserIds, event.title, event.body, `/workshops/${event.workshopId}`);
+    if (event.type === "ANNOUNCEMENT_PUBLISHED") {
+      await notifyAnnouncement(event.recipientUserIds, event.title, event.body, `/workshops/${event.workshopId}`);
+    }
   });
 }

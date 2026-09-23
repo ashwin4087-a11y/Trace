@@ -21,6 +21,14 @@ export const correct = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await attendance.correct(req.user!, req.params.id, req.body) });
 });
 
+export const generateQr = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await attendance.generateQr(req.user!, req.params.sessionId) });
+});
+
+export const closeQr = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await attendance.closeQr(req.user!, req.params.sessionId) });
+});
+
 export const qr = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await attendance.checkInWithQr(req.user!.id, req.body.token) });
 });

@@ -19,7 +19,7 @@ export const bulkMarkSchema = z.object({
 export const correctSchema = z.object({
   body: z.object({
     status: z.enum(["PRESENT", "ABSENT", "EXCUSED"]),
-    note: z.string().optional(),
+    reason: z.string().min(1, "Reason is required"),
   }),
 });
 

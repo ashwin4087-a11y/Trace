@@ -2,8 +2,10 @@ import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import type { AuthUser } from "../../shared/types/http";
 import { calculateAttendancePercentage } from "../../shared/utils/attendance";
-import { sha256 } from "../../shared/utils/tokens";
+import { sha256, randomToken } from "../../shared/utils/tokens";
+import jwt from "jsonwebtoken";
 import { recordAudit } from "../audit/audit.service";
+import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 import { assertCanManageWorkshop } from "../workshops/workshop.service";
 
 export async function summarize(userId: string, workshopId: string) {
@@ -170,8 +172,11 @@ export async function markManual(
 export async function correct(
   actor: AuthUser,
   attendanceId: string,
-  input: { status: "PRESENT" | "ABSENT" | "EXCUSED"; note?: string },
+  input: { status: "PRESENT" | "ABSENT" | "EXCUSED"; reason: string },
 ) {
+  if (!input.reason || input.reason.trim() === "") {
+    throw new ApiError(400, "BAD_REQUEST", "Correction reason is required");
+  }
   const existing = await prisma.attendance.findUnique({
     where: { id: attendanceId },
     include: { session: true },
@@ -180,29 +185,101 @@ export async function correct(
   await assertCanManageWorkshop(actor, existing.session.workshopId);
   const updated = await prisma.attendance.update({
     where: { id: attendanceId },
-    data: { status: input.status, method: "CORRECTION", note: input.note, recordedById: actor.id },
+    data: { status: input.status, method: "CORRECTION", note: input.reason, recordedById: actor.id },
   });
   await recordAudit(actor.id, "MODIFY_ATTENDANCE", "Attendance", attendanceId, {
     from: existing.status,
     to: input.status,
+    reason: input.reason
   });
+  
+  await emitWorkshopDomainEvent({
+    type: "ATTENDANCE_UPDATED",
+    attendanceId: updated.id,
+    sessionId: updated.sessionId,
+    workshopId: existing.session.workshopId,
+    registrationId: updated.registrationId,
+    userId: updated.userId,
+    status: updated.status,
+    updatedAt: updated.recordedAt,
+    source: updated.method,
+  });
+  
   return updated;
 }
 
+export async function generateQr(actor: AuthUser, sessionId: string) {
+  const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
+  if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
+  await assertCanManageWorkshop(actor, session.workshopId);
+
+  const jti = randomToken(32);
+  const qrTokenHash = sha256(jti);
+
+  await prisma.workshopSession.update({
+    where: { id: sessionId },
+    data: { qrTokenHash },
+  });
+
+  const secret = process.env.JWT_SECRET || "fallback";
+  const token = jwt.sign({ sessionId, jti }, secret, { expiresIn: "5m" });
+
+  return { token, expiresAt: new Date(Date.now() + 5 * 60 * 1000) };
+}
+
+export async function closeQr(actor: AuthUser, sessionId: string) {
+  const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
+  if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
+  await assertCanManageWorkshop(actor, session.workshopId);
+
+  await prisma.workshopSession.update({
+    where: { id: sessionId },
+    data: { qrTokenHash: null },
+  });
+  return { success: true };
+}
+
 export async function checkInWithQr(userId: string, token: string) {
-  const session = await prisma.workshopSession.findUnique({ where: { qrTokenHash: sha256(token) } });
-  if (!session) throw new ApiError(400, "INVALID_QR", "Attendance code is not valid");
+  const secret = process.env.JWT_SECRET || "fallback";
+  let payload: any;
+  try {
+    payload = jwt.verify(token, secret);
+  } catch (err) {
+    throw new ApiError(400, "INVALID_QR", "QR code is expired or invalid");
+  }
+
+  const { sessionId, jti } = payload;
+  const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
+  if (!session || !session.qrTokenHash || session.qrTokenHash !== sha256(jti)) {
+    throw new ApiError(400, "INVALID_QR", "Attendance code is not valid or has been refreshed");
+  }
+
   const registration = await prisma.registration.findUnique({
     where: { workshopId_userId: { workshopId: session.workshopId, userId } },
   });
   if (!registration || registration.status !== "CONFIRMED") {
     throw new ApiError(403, "NOT_REGISTERED", "Only confirmed participants can use QR check-in");
   }
-  return prisma.attendance.upsert({
+  
+  const attendance = await prisma.attendance.upsert({
     where: { sessionId_registrationId: { sessionId: session.id, registrationId: registration.id } },
     update: { status: "PRESENT", method: "QR", recordedAt: new Date() },
     create: { sessionId: session.id, registrationId: registration.id, userId, status: "PRESENT", method: "QR" },
   });
+
+  await emitWorkshopDomainEvent({
+    type: "ATTENDANCE_UPDATED",
+    attendanceId: attendance.id,
+    sessionId: session.id,
+    workshopId: session.workshopId,
+    registrationId: registration.id,
+    userId,
+    status: attendance.status,
+    updatedAt: attendance.recordedAt,
+    source: attendance.method,
+  });
+
+  return attendance;
 }
 
 export async function historyForWorkshop(workshopId: string) {

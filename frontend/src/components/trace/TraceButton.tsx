@@ -20,7 +20,7 @@ export function TraceButton({
     "inline-flex items-center justify-center font-sans font-semibold rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#BF9270]/40 disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variants = {
-    primary: "bg-[#BF9270] hover:bg-[#261D1A] text-[#FFEDDB] shadow-xs hover:shadow-sm",
+    primary: "bg-[#BF9270] hover:opacity-90 text-[#FFEDDB] shadow-xs hover:shadow-sm",
     secondary: "bg-[#FFFFFF] border border-[#DFC1B0] text-[#1A1412] hover:bg-[#FFEDDB] hover:border-[#BF9270]",
     ghost: "bg-transparent text-[#BF9270] hover:text-[#261D1A] underline-offset-4 hover:underline",
     danger: "bg-[#9f2d2d] text-[#FFFFFF] hover:bg-[#1A1412]",

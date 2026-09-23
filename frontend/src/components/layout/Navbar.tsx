@@ -88,7 +88,7 @@ export function Navbar() {
           ) : (
             <Link
               to="/login"
-              className="px-4 py-1.5 rounded-lg bg-[#BF9270] text-xs font-semibold text-[#FFEDDB] hover:bg-[#261D1A] transition-colors shadow-xs"
+              className="px-4 py-1.5 rounded-lg bg-[#BF9270] text-xs font-semibold text-[#FFEDDB] hover:opacity-90 transition-colors shadow-xs"
             >
               {t("login")}
             </Link>

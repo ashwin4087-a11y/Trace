@@ -50,7 +50,7 @@ export function CertificateVerificationPage() {
               onChange={(event) => setCode(event.target.value)}
             />
           </div>
-          <Button type="submit" className="w-full md:w-auto px-6 py-2 bg-[#BF9270] text-[#FFEDDB] font-semibold rounded-lg hover:bg-[#261D1A]">
+          <Button type="submit" className="w-full md:w-auto px-6 py-2 bg-[#BF9270] text-[#FFEDDB] font-semibold rounded-lg hover:opacity-90">
             Verify Credential
           </Button>
         </form>

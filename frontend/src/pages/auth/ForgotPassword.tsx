@@ -48,7 +48,7 @@ export function ForgotPasswordPage() {
             </div>
           ) : null}
 
-          <Button type="submit" className="w-full py-2.5 bg-[#BF9270] text-[#FFEDDB] font-semibold rounded-lg hover:bg-[#261D1A]">
+          <Button type="submit" className="w-full py-2.5 bg-[#BF9270] text-[#FFEDDB] font-semibold rounded-lg hover:opacity-90">
             Send Reset Instructions
           </Button>
 

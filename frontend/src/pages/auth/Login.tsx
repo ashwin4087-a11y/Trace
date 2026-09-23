@@ -44,7 +44,7 @@ export function LoginPage() {
 
           {error ? <ErrorState message={error} /> : null}
 
-          <Button type="submit" className="w-full py-2.5 bg-[#BF9270] text-[#FFEDDB] font-semibold rounded-lg hover:bg-[#261D1A]">
+          <Button type="submit" className="w-full py-2.5 bg-[#BF9270] text-[#FFEDDB] font-semibold rounded-lg hover:opacity-90">
             Sign In to TRACE
           </Button>
 

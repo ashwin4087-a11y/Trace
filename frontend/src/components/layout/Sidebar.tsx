@@ -2,16 +2,22 @@ import { NavLink } from "react-router-dom";
 
 export function Sidebar({ items }: { items: { to: string; label: string }[] }) {
   return (
-    <aside className="w-56 shrink-0 border-r border-line bg-card p-4">
-      <nav className="flex flex-col gap-1 text-sm">
+    <aside className="w-60 shrink-0 border-r border-[#DFC1B0] bg-[#FFFFFF] p-4 hidden md:block min-h-[calc(100vh-5rem)]">
+      <nav className="flex flex-col gap-1.5 font-sans text-xs">
         {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.to.split("/").length <= 2}
-            className={({ isActive }) => `rounded px-3 py-2 ${isActive ? "bg-brand text-white" : "hover:bg-paper"}`}
+            className={({ isActive }) =>
+              `rounded-lg px-3.5 py-2.5 transition-colors font-medium flex items-center justify-between ${
+                isActive
+                  ? "bg-[#BF9270] text-[#FFEDDB] font-semibold shadow-xs"
+                  : "text-[#1A1412] hover:bg-[#EDCDBB]/50 hover:text-[#261D1A]"
+              }`
+            }
           >
-            {item.label}
+            <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>

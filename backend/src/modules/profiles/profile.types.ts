@@ -1,4 +1,4 @@
-import type { AcademicDomain, PreferredLanguage } from "@prisma/client";
+import type { AcademicDomain, AcademicYear, PreferredLanguage } from "@prisma/client";
 
 export type ProfileUpdate = {
   firstName?: string;
@@ -7,7 +7,7 @@ export type ProfileUpdate = {
   institution: string;
   domain: AcademicDomain;
   departmentName?: string;
-  year?: number;
+  year?: AcademicYear;
   interests: string[];
   organizationId?: string | null;
   departmentId?: string | null;

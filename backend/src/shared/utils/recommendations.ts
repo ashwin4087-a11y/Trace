@@ -1,7 +1,7 @@
 export type ProfileSignals = {
   domain?: string | null;
   departmentName?: string | null;
-  year?: number | null;
+  year?: string | null;
   skills: string[];
   interests: string[];
   language: string;
@@ -58,7 +58,7 @@ export function scoreWorkshop(
     reasons.push("Interest overlap");
   }
 
-  if (profile.year && profile.year <= 2 && workshop.level === "BEGINNER") {
+  if ((profile.year === "FIRST" || profile.year === "SECOND") && workshop.level === "BEGINNER") {
     score += 5;
     reasons.push("Level fits early year of study");
   }

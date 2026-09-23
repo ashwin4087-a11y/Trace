@@ -1,9 +1,9 @@
-import type { AccountStatus, UserRole } from "@prisma/client";
+import type { AccountStatus, RoleName } from "@prisma/client";
 
 export type AuthUser = {
   id: string;
   email: string;
-  role: UserRole;
+  role: RoleName;
   status: AccountStatus;
   organizationId: string | null;
   departmentId: string | null;

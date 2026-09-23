@@ -1,4 +1,4 @@
-import type { AcademicDomain } from "@prisma/client";
+import type { AcademicDomain, AcademicYear } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 
@@ -46,7 +46,7 @@ export async function upsertMyProfile(
     institution: string;
     domain: AcademicDomain;
     departmentName?: string;
-    year?: number;
+    year?: AcademicYear;
     interests: string[];
     organizationId?: string | null;
     departmentId?: string | null;

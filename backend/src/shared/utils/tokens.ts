@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import jwt, { type SignOptions } from "jsonwebtoken";
 import { env } from "../../config/environment";
-import type { UserRole } from "@prisma/client";
+import type { RoleName } from "@prisma/client";
 
 export function sha256(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
@@ -22,7 +22,7 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 
 export type AccessPayload = {
   sub: string;
-  role: UserRole;
+  role: RoleName;
 };
 
 export function signAccessToken(payload: AccessPayload): string {
@@ -35,7 +35,7 @@ export function verifyAccessToken(token: string): AccessPayload {
   if (typeof decoded === "string" || !decoded.sub || !decoded.role) {
     throw new Error("Invalid access token");
   }
-  return { sub: decoded.sub, role: decoded.role as UserRole };
+  return { sub: decoded.sub, role: decoded.role as RoleName };
 }
 
 export function refreshExpiry(): Date {

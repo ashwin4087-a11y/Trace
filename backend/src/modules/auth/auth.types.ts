@@ -1,11 +1,11 @@
-import type { AccountStatus, PreferredLanguage, UserRole } from "@prisma/client";
+import type { AccountStatus, PreferredLanguage, RoleName } from "@prisma/client";
 
 export type PublicUser = {
   id: string;
   email: string;
   firstName: string;
   lastName: string;
-  role: UserRole;
+  role: RoleName;
   status: AccountStatus;
   preferredLanguage: PreferredLanguage;
   emailVerifiedAt: string | null;

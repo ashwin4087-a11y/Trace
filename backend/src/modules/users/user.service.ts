@@ -1,4 +1,4 @@
-import type { AccountStatus, Prisma, UserRole } from "@prisma/client";
+import type { AccountStatus, Prisma, RoleName } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import { hashPassword } from "../../shared/utils/tokens";
@@ -9,7 +9,7 @@ export async function listUsers(input: {
   page: number;
   pageSize: number;
   search?: string;
-  role?: UserRole;
+  role?: RoleName;
   status?: AccountStatus;
 }) {
   const where: Prisma.UserWhereInput = {};
@@ -46,7 +46,7 @@ export async function updateUser(
   input: {
     firstName?: string;
     lastName?: string;
-    role?: UserRole;
+    role?: RoleName;
     organizationId?: string | null;
     departmentId?: string | null;
     preferredLanguage?: "EN" | "TA" | "EN_TA";

@@ -1254,7 +1254,20 @@ model AttendanceMonitoringSession {
   session      WorkshopSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   registration Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events       MonitoringEvent[]
 
   @@index([sessionId])
   @@index([userId])
+}
+
+model MonitoringEvent {
+  id                    String                      @id @default(uuid())
+  monitoringSessionId   String
+  type                  String
+  clientTime            DateTime?
+  serverTime            DateTime                    @default(now())
+
+  monitoringSession     AttendanceMonitoringSession @relation(fields: [monitoringSessionId], references: [id], onDelete: Cascade)
+  
+  @@index([monitoringSessionId, serverTime])
 }

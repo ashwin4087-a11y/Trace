@@ -67,8 +67,8 @@ export const heartbeat = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await monitoring.heartbeat(req.user!, req.params.id) });
 });
 
-export const fullscreenViolation = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await monitoring.fullscreenViolation(req.user!, req.params.id) });
+export const recordEvent = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.recordEvent(req.user!, { ...req.body, monitoringId: req.params.id }) });
 });
 
 export const endMonitoring = asyncHandler(async (req, res) => {

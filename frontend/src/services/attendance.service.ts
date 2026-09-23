@@ -27,6 +27,6 @@ export async function verifyMyQr(sessionId: string, token: string) {
 export async function heartbeat(monitoringSessionId: string) {
   return unwrap<any>(await api.post(`/attendance-sessions/${monitoringSessionId}/heartbeat`));
 }
-export async function fullscreenViolation(monitoringSessionId: string) {
-  return unwrap<any>(await api.post(`/attendance-sessions/${monitoringSessionId}/fullscreen-violation`));
+export async function recordEvent(monitoringSessionId: string, type: string) {
+  return unwrap<any>(await api.post(`/attendance-sessions/${monitoringSessionId}/event`, { type, clientTime: new Date().toISOString() }));
 }

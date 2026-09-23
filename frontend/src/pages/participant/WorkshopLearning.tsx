@@ -8,7 +8,7 @@ import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { listMaterials } from "../../services/learning.service";
 import { listSessions, getSessionAccess } from "../../services/session.service";
-import { generateMyQr, verifyMyQr, heartbeat, fullscreenViolation } from "../../services/attendance.service";
+import { generateMyQr, verifyMyQr, heartbeat, recordEvent } from "../../services/attendance.service";
 
 function SessionRow({ session }: { session: any }) {
   const [accessState, setAccessState] = useState<{ access: string; meetingUrl?: string; monitoringSession?: any } | null>(null);
@@ -38,16 +38,27 @@ function SessionRow({ session }: { session: any }) {
       }, 30000); // 30s heartbeat
       
       const handleVisibilityChange = () => {
-        if (document.hidden) {
-          fullscreenViolation(accessState.monitoringSession.id).catch(() => fetchAccess());
-        }
+        recordEvent(accessState.monitoringSession.id, document.hidden ? "TAB_HIDDEN" : "TAB_VISIBLE").catch(() => {});
+      };
+
+      const handleFocus = () => recordEvent(accessState.monitoringSession.id, "FOCUS_REGAINED").catch(() => {});
+      const handleBlur = () => recordEvent(accessState.monitoringSession.id, "FOCUS_LOST").catch(() => {});
+      const handleFullscreenChange = () => {
+        const isFullscreen = !!document.fullscreenElement;
+        recordEvent(accessState.monitoringSession.id, isFullscreen ? "FULLSCREEN_ENTER" : "FULLSCREEN_EXIT").catch(() => {});
       };
       
       document.addEventListener("visibilitychange", handleVisibilityChange);
+      window.addEventListener("focus", handleFocus);
+      window.addEventListener("blur", handleBlur);
+      document.addEventListener("fullscreenchange", handleFullscreenChange);
       
       return () => {
         clearInterval(interval);
         document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("focus", handleFocus);
+        window.removeEventListener("blur", handleBlur);
+        document.removeEventListener("fullscreenchange", handleFullscreenChange);
       };
     }
   }, [accessState]);

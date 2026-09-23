@@ -1,7 +1,7 @@
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import type { AuthUser } from "../../shared/types/http";
-import { calculateAttendancePercentage } from "../../shared/utils/attendance";
+import { calculateAttendancePercentage, calculateInactiveIntervals } from "../../shared/utils/attendance";
 import { sha256, randomToken } from "../../shared/utils/tokens";
 import jwt from "jsonwebtoken";
 import { recordAudit } from "../audit/audit.service";
@@ -11,7 +11,7 @@ import { assertCanManageWorkshop } from "../workshops/workshop.service";
 export async function summarize(userId: string, workshopId: string) {
   const sessions = await prisma.workshopSession.findMany({
     where: { workshopId, status: { not: "CANCELLED" } },
-    select: { id: true },
+    select: { id: true, startTime: true, endTime: true },
   });
   const total = sessions.length;
   
@@ -33,16 +33,29 @@ export async function summarize(userId: string, workshopId: string) {
     // Check if it was an online monitored session
     const monitoring = await prisma.attendanceMonitoringSession.findFirst({
       where: { sessionId: session.id, userId, status: "COMPLETED" },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
+      include: { events: true }
     });
 
-    if (monitoring && monitoring.endedAt) {
+    if (monitoring && monitoring.endedAt && session.startTime && session.endTime) {
       // Calculate duration percentage
-      const durationMs = monitoring.endedAt.getTime() - monitoring.createdAt.getTime();
-      const expectedDurationMs = 60 * 60 * 1000; // Assume 1 hour for AUREX if not specified
-      let pct = (durationMs / expectedDurationMs) * 100;
-      if (pct > 100) pct = 100;
-      totalPercentageAccumulated += pct;
+      const sessionStart = session.startTime;
+      const sessionEnd = session.endTime;
+      
+      const expectedDurationMs = sessionEnd.getTime() - sessionStart.getTime();
+      
+      if (expectedDurationMs > 0) {
+        const events = monitoring.events.map(e => ({ type: e.type, serverTime: e.serverTime }));
+        const inactiveDurationMs = calculateInactiveIntervals(events, sessionStart, sessionEnd, 10);
+        
+        const effectiveDurationMs = Math.max(0, expectedDurationMs - inactiveDurationMs);
+        
+        let pct = (effectiveDurationMs / expectedDurationMs) * 100;
+        if (pct > 100) pct = 100;
+        totalPercentageAccumulated += pct;
+      } else {
+        totalPercentageAccumulated += 100;
+      }
     } else {
       totalPercentageAccumulated += 100; // Offline or legacy attendance gets 100%
     }
@@ -239,18 +252,20 @@ export async function generateQr(actor: AuthUser, sessionId: string) {
   if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
   await assertCanManageWorkshop(actor, session.workshopId);
 
-  const jti = randomToken(32);
-  const qrTokenHash = sha256(jti);
-
-  await prisma.workshopSession.update({
-    where: { id: sessionId },
-    data: { qrTokenHash },
-  });
+  let qrTokenHash = session.qrTokenHash;
+  if (!qrTokenHash) {
+    const jti = randomToken(32);
+    qrTokenHash = sha256(jti);
+    await prisma.workshopSession.update({
+      where: { id: sessionId },
+      data: { qrTokenHash },
+    });
+  }
 
   const secret = process.env.JWT_SECRET || "fallback";
-  const token = jwt.sign({ sessionId, jti }, secret, { expiresIn: "5m" });
+  const token = jwt.sign({ sessionId, type: "MASTER_QR" }, secret, { expiresIn: "30s" });
 
-  return { token, expiresAt: new Date(Date.now() + 5 * 60 * 1000) };
+  return { token, expiresAt: new Date(Date.now() + 30 * 1000) };
 }
 
 export async function closeQr(actor: AuthUser, sessionId: string) {
@@ -274,10 +289,10 @@ export async function checkInWithQr(userId: string, token: string) {
     throw new ApiError(400, "INVALID_QR", "QR code is expired or invalid");
   }
 
-  const { sessionId, jti } = payload;
+  const { sessionId } = payload;
   const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
-  if (!session || !session.qrTokenHash || session.qrTokenHash !== sha256(jti)) {
-    throw new ApiError(400, "INVALID_QR", "Attendance code is not valid or has been refreshed");
+  if (!session || !session.qrTokenHash) {
+    throw new ApiError(400, "INVALID_QR", "Attendance QR is not currently active for this session");
   }
 
   const registration = await prisma.registration.findUnique({

@@ -165,9 +165,9 @@ export async function heartbeat(user: AuthUser, monitoringId: string) {
   });
 }
 
-export async function fullscreenViolation(user: AuthUser, monitoringId: string) {
+export async function recordEvent(user: AuthUser, input: { monitoringId: string; type: string; clientTime?: string }) {
   const monitoring = await prisma.attendanceMonitoringSession.findUnique({
-    where: { id: monitoringId },
+    where: { id: input.monitoringId },
     include: { session: true }
   });
 
@@ -179,16 +179,11 @@ export async function fullscreenViolation(user: AuthUser, monitoringId: string) 
     throw new ApiError(400, "BAD_REQUEST", "Monitoring session is not active");
   }
 
-  const newWarningCount = monitoring.warningCount + 1;
-  const isTerminated = newWarningCount >= 4;
-
-  return prisma.attendanceMonitoringSession.update({
-    where: { id: monitoringId },
+  return prisma.monitoringEvent.create({
     data: {
-      warningCount: newWarningCount,
-      status: isTerminated ? "TERMINATED" : "ACTIVE",
-      terminationReason: isTerminated ? "FULLSCREEN_VIOLATION" : null,
-      endedAt: isTerminated ? new Date() : null,
+      monitoringSessionId: input.monitoringId,
+      type: input.type,
+      clientTime: input.clientTime ? new Date(input.clientTime) : null,
     }
   });
 }

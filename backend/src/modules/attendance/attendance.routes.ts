@@ -28,7 +28,7 @@ router.get("/attendance/me", attendance.mine);
 router.get("/sessions/:sessionId/my-attendance-qr", attendance.myQr);
 router.post("/qr/verify", attendance.verifyQr);
 router.post("/attendance-sessions/:id/heartbeat", attendance.heartbeat);
-router.post("/attendance-sessions/:id/fullscreen-violation", attendance.fullscreenViolation);
+router.post("/attendance-sessions/:id/event", attendance.recordEvent);
 router.post("/attendance-sessions/:id/end", attendance.endMonitoring);
 
 export { router as attendanceRoutes };

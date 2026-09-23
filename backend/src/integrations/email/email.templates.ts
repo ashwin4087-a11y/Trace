@@ -22,8 +22,10 @@ export function workshopAlertEmail(name: string, title: string, workshopId: stri
   const link = `${env.frontendUrl}/workshops/${workshopId}`;
   return {
     subject: `New workshop: ${title}`,
-    text: `Hello ${name}, a workshop matching your profile was published: ${title}. ${link}`,
-    html: `<p>Hello ${name},</p><p><a href="${link}">${title}</a> matches your learning profile.</p>`,
+    text: `Hello ${name}, a workshop matching your profile was published: ${title}. Register here: ${link}`,
+    html: `<p>Hello ${name},</p>
+<p><strong>${title}</strong> matches your learning profile.</p>
+<p><a href="${link}" style="display:inline-block;padding:10px 20px;background-color:#A57D61;color:white;text-decoration:none;border-radius:4px;">Click here to register</a></p>`,
   };
 }
 

@@ -60,16 +60,37 @@ export async function organizerAnalytics(organizerId: string) {
 }
 
 export async function platformAnalytics() {
-  const [users, participants, organizers, workshops, registrations, attendance, certificates, events] =
-    await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { role: "PARTICIPANT" } }),
-      prisma.user.count({ where: { role: "ORGANIZER" } }),
-      prisma.workshop.count(),
-      prisma.registration.count({ where: { status: "CONFIRMED" } }),
-      prisma.attendance.count({ where: { status: "PRESENT" } }),
-      prisma.certificate.count({ where: { status: "ISSUED" } }),
-      prisma.analyticsEvent.count(),
-    ]);
-  return { users, participants, organizers, workshops, registrations, attendance, certificates, events };
+  const [
+    totalUsers,
+    activeUsers,
+    totalOrganizers,
+    totalWorkshops,
+    totalSessions,
+    totalEnrollments,
+    certificatesIssued,
+    attendanceCount,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.user.count({ where: { status: "ACTIVE" } }),
+    prisma.user.count({ where: { role: "ORGANIZER" } }),
+    prisma.workshop.count(),
+    prisma.workshopSession.count(),
+    prisma.registration.count({ where: { status: "CONFIRMED" } }),
+    prisma.certificate.count({ where: { status: "ISSUED" } }),
+    prisma.attendance.count({ where: { status: "PRESENT" } }),
+  ]);
+
+  // Rough estimation of attendance rate across the platform
+  const attendanceRate = totalEnrollments > 0 ? Math.round((attendanceCount / totalEnrollments) * 100) : 0;
+
+  return { 
+    totalUsers, 
+    activeUsers, 
+    totalOrganizers, 
+    totalWorkshops, 
+    totalSessions, 
+    totalEnrollments, 
+    certificatesIssued,
+    attendanceRate 
+  };
 }

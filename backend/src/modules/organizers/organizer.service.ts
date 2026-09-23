@@ -15,7 +15,7 @@ type OrganizerUser = Prisma.UserGetPayload<{ include: typeof organizerInclude }>
 
 function toOrganizer(user: OrganizerUser) {
   return {
-    ...toPublicUser(user, user.userRoles.map((assignment) => ({ role: { name: assignment.role.name, permissions: [] } }))),
+    ...toPublicUser(user),
     organization: user.organization,
     department: user.department,
   };

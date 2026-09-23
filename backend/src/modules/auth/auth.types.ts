@@ -2,7 +2,7 @@ import type { AccountStatus, PreferredLanguage, RoleName } from "@prisma/client"
 
 export type PublicUser = {
   id: string;
-  name: string | null;
+  name: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -25,3 +25,4 @@ export type AuthResult = {
   accessToken: string;
   user: PublicUser;
 };
+

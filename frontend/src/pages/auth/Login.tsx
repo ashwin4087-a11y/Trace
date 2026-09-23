@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "../../components/common/Button";
 import { ErrorState } from "../../components/common/ErrorState";
 import { Input } from "../../components/common/Input";
+import { PasswordInput } from "../../components/common/PasswordInput";
 import { MainLayout } from "../../components/layout/MainLayout";
 import { TraceLogo } from "../../components/trace/TraceLogo";
 import { useAuth } from "../../context/AuthContext";
@@ -40,7 +41,7 @@ export function LoginPage() {
           </div>
 
           <Input label="Email Address" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-          <Input label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          <PasswordInput label="Password" value={password} onChange={(event) => setPassword(event.target.value)} required />
 
           {error ? <ErrorState message={error} /> : null}
 

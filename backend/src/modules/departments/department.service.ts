@@ -14,35 +14,29 @@ export async function getDepartment(id: string) {
   const department = await prisma.department.findUnique({
     where: { id },
     include: {
-      organization: { select: { id: true, name: true, code: true, status: true } },
-      members: { include: { user: { select: { id: true, name: true, firstName: true, lastName: true, email: true, role: true, status: true } } } },
+      organization: { select: { id: true, name: true, code: true } },
+      users: { select: { id: true, firstName: true, lastName: true, email: true, role: true, status: true } },
     },
   });
   if (!department) throw new ApiError(404, "NOT_FOUND", "Department not found");
   return department;
 }
 
-export async function createDepartment(actorId: string, input: { organizationId: string; name: string; code: string; description?: string }) {
+export async function createDepartment(actorId: string, input: { organizationId: string; name: string; code: string }) {
   const org = await prisma.organization.findUnique({ where: { id: input.organizationId } });
   if (!org) throw new ApiError(404, "NOT_FOUND", "Organization not found");
-  if (org.status !== "ACTIVE") throw new ApiError(409, "ORGANIZATION_INACTIVE", "Departments can only be added to active organizations");
   const department = await prisma.department.create({ data: input });
-  await recordAudit(actorId, "CREATE_DEPARTMENT", "Department", department.id, { organizationId: input.organizationId });
+  await recordAudit(actorId, "CREATE_ORGANIZATION", "Department", department.id, { organizationId: input.organizationId });
   return department;
 }
 
-export async function updateDepartment(actorId: string, id: string, input: { name?: string; code?: string; description?: string }) {
+export async function updateDepartment(actorId: string, id: string, input: { name?: string; code?: string }) {
   const department = await prisma.department.update({ where: { id }, data: input });
-  await recordAudit(actorId, "UPDATE_DEPARTMENT", "Department", id, { fields: Object.keys(input) });
-  return department;
-}
-
-export async function setDepartmentStatus(actorId: string, id: string, status: "ACTIVE" | "SUSPENDED" | "DEACTIVATED") {
-  const department = await prisma.department.update({ where: { id }, data: { status } });
-  await recordAudit(actorId, "DEPARTMENT_STATUS", "Department", id, { status });
+  await recordAudit(actorId, "CREATE_ORGANIZATION", "Department", id, { fields: Object.keys(input) });
   return department;
 }
 
 export async function removeDepartment(id: string) {
   await prisma.department.delete({ where: { id } });
 }
+

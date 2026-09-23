@@ -18,7 +18,7 @@ export const update = asyncHandler(async (req, res) => {
 });
 
 export const status = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await organizations.setOrganizationStatus(req.user!.id, req.params.id, req.body.status) });
+  res.json({ success: true, data: await organizations.getOrganization(req.params.id) });
 });
 
 export const remove = asyncHandler(async (req, res) => {

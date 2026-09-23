@@ -1,7 +1,7 @@
 import type { NotificationType, Prisma } from "@prisma/client";
 import { prisma } from "../../config/database";
 import { sendEmail } from "../../integrations/email/email.provider";
-import { certificateEmail, registrationEmail, workshopAlertEmail } from "../../integrations/email/email.templates";
+import { certificateEmail, registrationEmail, sessionReminderEmail, workshopAlertEmail } from "../../integrations/email/email.templates";
 import { scoreWorkshop } from "../../shared/utils/recommendations";
 import { getSettings } from "../settings/settings.service";
 
@@ -210,4 +210,89 @@ export async function updatePreferences(
     update: input,
     create: { userId },
   });
+}
+
+/**
+ * Sends a SESSION_REMINDER notification (in-app + email) to every participant
+ * with a CONFIRMED registration for the workshop that owns this session.
+ *
+ * Duplicate prevention: we use a deterministic `link` value per (user, session)
+ * and skip delivery if a notification with that exact link already exists.
+ */
+export async function notifySessionReminder(sessionId: string): Promise<{ notified: number }> {
+  const settings = await getSettings();
+  if (!settings.notificationsEnabled) return { notified: 0 };
+
+  const session = await prisma.workshopSession.findUnique({
+    where: { id: sessionId },
+    include: { workshop: true },
+  });
+
+  if (!session) return { notified: 0 };
+
+  // Only send for scheduled sessions
+  if (session.status === "CANCELLED" || session.status === "COMPLETED") {
+    return { notified: 0 };
+  }
+
+  // Find all CONFIRMED registrations for this workshop
+  const registrations = await prisma.registration.findMany({
+    where: {
+      workshopId: session.workshopId,
+      status: "CONFIRMED",
+    },
+    include: {
+      user: {
+        include: { notificationPreference: true },
+      },
+    },
+  });
+
+  // Deterministic link used as duplicate key
+  const reminderLink = `/sessions/${sessionId}/reminder`;
+
+  // Fetch existing reminders for this session in one query to avoid N+1
+  const existingLinks = await prisma.notification.findMany({
+    where: {
+      type: "SESSION_REMINDER",
+      link: reminderLink,
+      userId: { in: registrations.map((r) => r.user.id) },
+    },
+    select: { userId: true },
+  });
+  const alreadyNotified = new Set(existingLinks.map((n) => n.userId));
+
+  let notified = 0;
+
+  for (const reg of registrations) {
+    const participant = reg.user;
+
+    // Skip if already received this reminder
+    if (alreadyNotified.has(participant.id)) continue;
+
+    const emailMsg = sessionReminderEmail(
+      participant.firstName,
+      session.workshop.title,
+      session.title,
+      session.startTime,
+      session.meetingUrl,
+      session.venue,
+    );
+
+    await deliver({
+      userId: participant.id,
+      email: participant.email,
+      firstName: participant.firstName,
+      type: "SESSION_REMINDER",
+      title: `Reminder: ${session.title}`,
+      body: `Your session "${session.title}" for ${session.workshop.title} starts tomorrow.`,
+      link: reminderLink,
+      emailMessage: emailMsg,
+      preference: participant.notificationPreference,
+    });
+
+    notified += 1;
+  }
+
+  return { notified };
 }

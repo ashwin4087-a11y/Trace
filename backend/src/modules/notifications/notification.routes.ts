@@ -6,6 +6,8 @@ import * as controller from "./notification.controller";
 
 export const notificationRouter = Router();
 
+notificationRouter.post("/test-email", requireAuth, controller.testEmail);
+
 notificationRouter.use(requireAuth, requireVerified);
 notificationRouter.get("/", controller.list);
 notificationRouter.post("/read-all", controller.readAll);

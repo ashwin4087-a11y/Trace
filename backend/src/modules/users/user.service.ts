@@ -102,8 +102,12 @@ export async function updateUser(
   const data: Prisma.UserUpdateInput = {};
   if (input.firstName !== undefined) data.firstName = input.firstName;
   if (input.lastName !== undefined) data.lastName = input.lastName;
-  if (input.organizationId !== undefined) data.organizationId = input.organizationId;
-  if (input.departmentId !== undefined) data.departmentId = input.departmentId;
+  if (input.organizationId !== undefined) {
+    data.organization = input.organizationId ? { connect: { id: input.organizationId } } : { disconnect: true };
+  }
+  if (input.departmentId !== undefined) {
+    data.department = input.departmentId ? { connect: { id: input.departmentId } } : { disconnect: true };
+  }
   if (input.preferredLanguage !== undefined) data.preferredLanguage = input.preferredLanguage;
 
   await prisma.user.update({ where: { id }, data });

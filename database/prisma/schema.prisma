@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../../backend/node_modules/.prisma/client"
+  output   = "../../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -73,22 +73,26 @@ enum WorkshopStatus {
   CANCELLED
   ARCHIVED
 }
+
 enum DeliveryMode {
   ONLINE
   OFFLINE
   HYBRID
 }
+
 enum ProficiencyLevel {
   BEGINNER
   INTERMEDIATE
   ADVANCED
 }
+
 enum RegistrationStatus {
   PENDING_PAYMENT
   CONFIRMED
   WAITLISTED
   CANCELLED
 }
+
 enum OrderStatus {
   FREE
   PENDING
@@ -96,18 +100,21 @@ enum OrderStatus {
   FAILED
   CANCELLED
 }
+
 enum PaymentStatus {
   PENDING
   SUCCEEDED
   FAILED
   REFUNDED
 }
+
 enum SessionStatus {
   SCHEDULED
   LIVE
   COMPLETED
   CANCELLED
 }
+
 enum MaterialType {
   PDF
   PPT
@@ -118,11 +125,13 @@ enum MaterialType {
   IMAGE
   OTHER
 }
+
 enum MaterialStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
 }
+
 enum ActivityType {
   ASSIGNMENT
   PRACTICAL_TASK
@@ -131,12 +140,14 @@ enum ActivityType {
   EXERCISE
   RESOURCE_BASED
 }
+
 enum ActivityStatus {
   DRAFT
   PUBLISHED
   CLOSED
   ARCHIVED
 }
+
 enum SubmissionType {
   TEXT
   FILE
@@ -145,9 +156,11 @@ enum SubmissionType {
   TEXT_AND_URL
   NONE
 }
+
 enum QuestionType {
   MCQ_SINGLE
 }
+
 enum SubmissionStatus {
   NOT_STARTED
   DRAFT
@@ -157,37 +170,44 @@ enum SubmissionStatus {
   RETURNED
   LATE
 }
+
 enum AssessmentType {
   QUIZ
   MCQ
   OBJECTIVE
 }
+
 enum AssessmentStatus {
   DRAFT
   PUBLISHED
   CLOSED
   ARCHIVED
 }
+
 enum AttemptStatus {
   IN_PROGRESS
   SUBMITTED
   GRADED
   EXPIRED
 }
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
   EXCUSED
 }
+
 enum AttendanceMethod {
   MANUAL
   QR
   CORRECTION
 }
+
 enum CertificateStatus {
   ISSUED
   REVOKED
 }
+
 enum NotificationType {
   WORKSHOP_PUBLISHED
   REGISTRATION_CONFIRMED
@@ -196,22 +216,26 @@ enum NotificationType {
   ANNOUNCEMENT
   SYSTEM
 }
+
 enum CommunityPostType {
   DISCUSSION
   QUESTION
   POLL
   RESOURCE
 }
+
 enum CommunityMemberRole {
   MEMBER
   MODERATOR
   OWNER
 }
+
 enum LearningPathStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
 }
+
 enum AuditAction {
   LOGIN
   LOGOUT
@@ -256,37 +280,39 @@ model User {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
-  organization            Organization?            @relation(fields: [organizationId], references: [id])
-  department              Department?              @relation(fields: [departmentId], references: [id])
-  userRoles               UserRole[]
-  organizationMemberships OrganizationMember[]
-  academicProfile         AcademicProfile?
-  interests               UserInterest[]
-  skills                  UserSkill[]
-  refreshTokens           RefreshToken[]
-  sessions                UserSession[]
-  emailVerificationTokens EmailVerificationToken[]
-  passwordResetTokens     PasswordResetToken[]
-  organizedWorkshops      Workshop[]               @relation("WorkshopOrganizer")
-  trainerSessions         WorkshopSession[]        @relation("SessionTrainer")
-  registrations           Registration[]
-  attendanceRecords       Attendance[]             @relation("AttendanceSubject")
-  attendanceRecorded      Attendance[]             @relation("AttendanceRecorder")
-  certificates            Certificate[]
-  notifications           Notification[]
-  notificationPreference  NotificationPreference?
-  communityMemberships    CommunityMember[]
-  communityPosts          CommunityPost[]
-  communityComments       CommunityComment[]
-  pollVotes               CommunityPollVote[]
-  learningPathEnrollments LearningPathEnrollment[]
-  assessmentAttempts      AssessmentAttempt[]
-  activitySubmissions     ActivitySubmission[]
-  activityReviews         ActivitySubmission[]     @relation("SubmissionReviewer")
-  orders                  Order[]
-  announcements           Announcement[]
-  auditLogs               AuditLog[]               @relation("AuditActor")
-  recommendations         Recommendation[]
+  organization                 Organization?                 @relation(fields: [organizationId], references: [id])
+  department                   Department?                   @relation(fields: [departmentId], references: [id])
+  userRoles                    UserRole[]
+  organizationMemberships      OrganizationMember[]
+  academicProfile              AcademicProfile?
+  interests                    UserInterest[]
+  skills                       UserSkill[]
+  refreshTokens                RefreshToken[]
+  sessions                     UserSession[]
+  emailVerificationTokens      EmailVerificationToken[]
+  passwordResetTokens          PasswordResetToken[]
+  organizedWorkshops           Workshop[]                    @relation("WorkshopOrganizer")
+  trainerSessions              WorkshopSession[]             @relation("SessionTrainer")
+  registrations                Registration[]
+  attendanceRecords            Attendance[]                  @relation("AttendanceSubject")
+  attendanceRecorded           Attendance[]                  @relation("AttendanceRecorder")
+  certificates                 Certificate[]
+  notifications                Notification[]
+  notificationPreference       NotificationPreference?
+  communityMemberships         CommunityMember[]
+  communityPosts               CommunityPost[]
+  communityComments            CommunityComment[]
+  pollVotes                    CommunityPollVote[]
+  learningPathEnrollments      LearningPathEnrollment[]
+  assessmentAttempts           AssessmentAttempt[]
+  activitySubmissions          ActivitySubmission[]
+  activityReviews              ActivitySubmission[]          @relation("SubmissionReviewer")
+  orders                       Order[]
+  announcements                Announcement[]
+  auditLogs                    AuditLog[]                    @relation("AuditActor")
+  recommendations              Recommendation[]
+  personalQrTokens             PersonalQrToken[]
+  attendanceMonitoringSessions AttendanceMonitoringSession[]
 
   @@index([role, status])
   @@index([organizationId])
@@ -383,28 +409,28 @@ model UserSession {
 // ---------------------------------------------------------------------------
 
 model Organization {
-  id          String       @id @default(uuid())
+  id          String               @id @default(uuid())
   name        String
-  code        String       @unique
+  code        String               @unique
   description String?
-  status      OrganizationStatus @default(ACTIVE)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  status      OrganizationStatus   @default(ACTIVE)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
   departments Department[]
   users       User[]
   members     OrganizationMember[]
 }
 
 model Department {
-  id             String       @id @default(uuid())
+  id             String               @id @default(uuid())
   organizationId String
   name           String
   code           String
   description    String?
-  status         DepartmentStatus @default(ACTIVE)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status         DepartmentStatus     @default(ACTIVE)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   users          User[]
   members        OrganizationMember[]
   workshops      Workshop[]
@@ -430,16 +456,16 @@ model OrganizationMember {
 }
 
 model AcademicProfile {
-  id             String         @id @default(uuid())
-  userId         String         @unique
-  institution    String
-  domain         AcademicDomain
-  departmentName String?
-  year           AcademicYear?
+  id                String                    @id @default(uuid())
+  userId            String                    @unique
+  institution       String
+  domain            AcademicDomain
+  departmentName    String?
+  year              AcademicYear?
   preferredLanguage AcademicPreferredLanguage @default(ENGLISH)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  user              User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model UserInterest {
@@ -553,18 +579,18 @@ model WorkshopSkill {
 }
 
 model WorkshopSession {
-  id           String        @id @default(uuid())
-  workshopId   String
-  title        String
-  sessionDate  DateTime
-  startTime    DateTime
-  endTime      DateTime
-  trainerId    String?
-  trainerName  String?
-  meetingUrl   String?
-  recordingUrl String?
-  venue        String?
-  status       SessionStatus @default(SCHEDULED)
+  id              String        @id @default(uuid())
+  workshopId      String
+  title           String
+  sessionDate     DateTime
+  startTime       DateTime
+  endTime         DateTime
+  trainerId       String?
+  trainerName     String?
+  meetingUrl      String?
+  recordingUrl    String?
+  venue           String?
+  status          SessionStatus @default(SCHEDULED)
   qrTokenHash     String?       @unique
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
@@ -572,29 +598,33 @@ model WorkshopSession {
   mode            DeliveryMode?
   meetingProvider String?
 
-  workshop   Workshop           @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  trainer    User?              @relation("SessionTrainer", fields: [trainerId], references: [id])
-  attendance Attendance[]
-  materials  LearningMaterial[]
-  activities Activity[]
+  workshop                     Workshop                      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  trainer                      User?                         @relation("SessionTrainer", fields: [trainerId], references: [id])
+  attendance                   Attendance[]
+  materials                    LearningMaterial[]
+  activities                   Activity[]
+  personalQrTokens             PersonalQrToken[]
+  attendanceMonitoringSessions AttendanceMonitoringSession[]
 
   @@index([workshopId, sessionDate])
 }
 
 model Registration {
-  id         String             @id @default(uuid())
-  workshopId String
-  userId     String
-  status      RegistrationStatus
-  registeredAt DateTime           @default(now())
-  confirmedAt DateTime?
-  cancelledAt DateTime?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  workshop   Workshop           @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  order      Order?
-  attendance Attendance[]
+  id                           String                        @id @default(uuid())
+  workshopId                   String
+  userId                       String
+  status                       RegistrationStatus
+  registeredAt                 DateTime                      @default(now())
+  confirmedAt                  DateTime?
+  cancelledAt                  DateTime?
+  createdAt                    DateTime                      @default(now())
+  updatedAt                    DateTime                      @updatedAt
+  workshop                     Workshop                      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  user                         User                          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order                        Order?
+  attendance                   Attendance[]
+  personalQrTokens             PersonalQrToken[]
+  attendanceMonitoringSessions AttendanceMonitoringSession[]
 
   @@unique([workshopId, userId])
   @@index([userId])
@@ -654,26 +684,26 @@ model LearningMaterial {
 }
 
 model Activity {
-  id             String               @id @default(uuid())
+  id             String         @id @default(uuid())
   workshopId     String
   sessionId      String?
   title          String
   description    String
   instructions   String?
   type           ActivityType
-  status         ActivityStatus       @default(DRAFT)
-  sortOrder      Int                  @default(0)
-  isRequired     Boolean              @default(true)
+  status         ActivityStatus @default(DRAFT)
+  sortOrder      Int            @default(0)
+  isRequired     Boolean        @default(true)
   dueAt          DateTime?
   maxScore       Int?
-  submissionType SubmissionType       @default(NONE)
+  submissionType SubmissionType @default(NONE)
   resourceUrl    String?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  
-  workshop       Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  session        WorkshopSession?     @relation(fields: [sessionId], references: [id])
-  submissions    ActivitySubmission[]
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  workshop    Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  session     WorkshopSession?     @relation(fields: [sessionId], references: [id])
+  submissions ActivitySubmission[]
 
   @@index([workshopId])
   @@index([sessionId])
@@ -696,78 +726,78 @@ model ActivitySubmission {
   reviewedBy    String?
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
-  
-  activity      Activity         @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewer      User?            @relation("SubmissionReviewer", fields: [reviewedBy], references: [id])
+
+  activity Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewer User?    @relation("SubmissionReviewer", fields: [reviewedBy], references: [id])
 
   @@unique([activityId, userId])
   @@index([userId])
 }
 
 model Assessment {
-  id              String                 @id @default(uuid())
+  id              String           @id @default(uuid())
   workshopId      String
   sessionId       String?
   title           String
   description     String?
   instructions    String?
-  type            AssessmentType         @default(QUIZ)
-  status          AssessmentStatus       @default(DRAFT)
+  type            AssessmentType   @default(QUIZ)
+  status          AssessmentStatus @default(DRAFT)
   durationMinutes Int?
-  passScore       Int                    @default(50)
-  maxAttempts     Int                    @default(1)
-  isRequired      Boolean                @default(true)
+  passScore       Int              @default(50)
+  maxAttempts     Int              @default(1)
+  isRequired      Boolean          @default(true)
   dueAt           DateTime?
-  sortOrder       Int                    @default(0)
-  createdAt       DateTime               @default(now())
-  updatedAt       DateTime               @updatedAt
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
   publishedAt     DateTime?
-  
-  workshop        Workshop               @relation(fields: [workshopId], references: [id], onDelete: Cascade)
-  questions       AssessmentQuestion[]
-  attempts        AssessmentAttempt[]
+
+  workshop  Workshop             @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  questions AssessmentQuestion[]
+  attempts  AssessmentAttempt[]
 
   @@index([workshopId])
 }
 
 model AssessmentQuestion {
-  id           String             @id @default(uuid())
+  id           String       @id @default(uuid())
   assessmentId String
   prompt       String
   type         QuestionType
   options      Json?
   correctIndex Int?
-  points       Int                @default(1)
+  points       Int          @default(1)
   explanation  String?
   sortOrder    Int
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  
-  assessment   Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  answers      AssessmentAnswer[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  assessment Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  answers    AssessmentAnswer[]
 
   @@index([assessmentId])
 }
 
 model AssessmentAttempt {
-  id            String             @id @default(uuid())
+  id            String        @id @default(uuid())
   assessmentId  String
   userId        String
   attemptNumber Int
-  status        AttemptStatus      @default(IN_PROGRESS)
+  status        AttemptStatus @default(IN_PROGRESS)
   score         Int?
   maxScore      Int?
   percentage    Float?
   passed        Boolean?
-  startedAt     DateTime           @default(now())
+  startedAt     DateTime      @default(now())
   submittedAt   DateTime?
-  createdAt     DateTime           @default(now())
-  updatedAt     DateTime           @updatedAt
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  assessment    Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
-  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  answers       AssessmentAnswer[]
+  assessment Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers    AssessmentAnswer[]
 
   @@unique([assessmentId, userId, attemptNumber])
   @@index([assessmentId])
@@ -775,17 +805,17 @@ model AssessmentAttempt {
 }
 
 model AssessmentAnswer {
-  id                  String             @id @default(uuid())
+  id                  String   @id @default(uuid())
   attemptId           String
   questionId          String
   selectedOptionIndex Int?
   isCorrect           Boolean?
   marksAwarded        Int?
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  attempt             AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  question            AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attempt  AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([attemptId, questionId])
   @@index([attemptId])
@@ -793,19 +823,20 @@ model AssessmentAnswer {
 }
 
 model Attendance {
-  id             String           @id @default(uuid())
-  sessionId      String
-  registrationId String
-  userId         String
-  status         AttendanceStatus
-  method         AttendanceMethod
-  note           String?
-  recordedById   String?
-  recordedAt     DateTime         @default(now())
-  session        WorkshopSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  registration   Registration     @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  user           User             @relation("AttendanceSubject", fields: [userId], references: [id], onDelete: Cascade)
-  recordedBy     User?            @relation("AttendanceRecorder", fields: [recordedById], references: [id])
+  id                          String                       @id @default(uuid())
+  sessionId                   String
+  registrationId              String
+  userId                      String
+  status                      AttendanceStatus
+  method                      AttendanceMethod
+  note                        String?
+  recordedById                String?
+  recordedAt                  DateTime                     @default(now())
+  session                     WorkshopSession              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  registration                Registration                 @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user                        User                         @relation("AttendanceSubject", fields: [userId], references: [id], onDelete: Cascade)
+  recordedBy                  User?                        @relation("AttendanceRecorder", fields: [recordedById], references: [id])
+  attendanceMonitoringSession AttendanceMonitoringSession?
 
   @@unique([sessionId, registrationId])
   @@index([userId])
@@ -1026,6 +1057,7 @@ model AuditLog {
   entityType String
   entityId   String?
   metadata   Json?
+  status     String?
   createdAt  DateTime    @default(now())
   actor      User?       @relation("AuditActor", fields: [actorId], references: [id])
 
@@ -1047,4 +1079,61 @@ model PlatformSetting {
   traceSignatoryName    String?
   traceSignatoryTitle   String?
   updatedAt             DateTime            @updatedAt
+}
+
+enum MonitoringStatus {
+  ACTIVE
+  COMPLETED
+  TERMINATED
+  EXPIRED
+}
+
+enum TerminationReason {
+  FULLSCREEN_VIOLATION
+  SESSION_ENDED
+  USER_EXITED
+  TIMEOUT
+  ORGANIZER_TERMINATED
+  TECHNICAL
+}
+
+model PersonalQrToken {
+  id             String    @id @default(uuid())
+  tokenHash      String    @unique
+  sessionId      String
+  registrationId String
+  userId         String
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  session      WorkshopSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  registration Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, userId])
+}
+
+model AttendanceMonitoringSession {
+  id                String             @id @default(uuid())
+  attendanceId      String             @unique
+  sessionId         String
+  registrationId    String
+  userId            String
+  startedAt         DateTime           @default(now())
+  lastVerifiedAt    DateTime           @default(now())
+  endedAt           DateTime?
+  warningCount      Int                @default(0)
+  status            MonitoringStatus   @default(ACTIVE)
+  terminationReason TerminationReason?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  attendance   Attendance      @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  session      WorkshopSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  registration Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([userId])
 }

@@ -23,6 +23,9 @@ export function OrganizerSessionsPage() {
   const [title, setTitle] = useState("Interactive Lecture & Lab");
   const [start, setStart] = useState("");
   const [token, setToken] = useState("");
+  const [mode, setMode] = useState<"ONLINE" | "OFFLINE" | "HYBRID">("ONLINE");
+  const [meetingUrl, setMeetingUrl] = useState("");
+  const [venue, setVenue] = useState("");
 
   const create = useMutation({
     mutationFn: () =>
@@ -32,6 +35,10 @@ export function OrganizerSessionsPage() {
         sessionDate: new Date(start).toISOString(),
         startTime: new Date(start).toISOString(),
         endTime: new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString(),
+        mode,
+        meetingProvider: mode === "ONLINE" || mode === "HYBRID" ? "GOOGLE_MEET" : undefined,
+        meetingUrl: mode === "ONLINE" || mode === "HYBRID" ? meetingUrl : undefined,
+        venue: mode === "OFFLINE" || mode === "HYBRID" ? venue : undefined,
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["sessions", workshopId] }),
   });
@@ -74,8 +81,9 @@ export function OrganizerSessionsPage() {
                     <div>
                       <span className="font-bold text-[#BF9270] uppercase">Session {idx + 1}</span>
                       <h4 className="font-semibold text-sm text-[#1A1412] mt-0.5">{session.title}</h4>
-                      <p className="text-[#5F524B] mt-0.5">
-                        {session.startTime ? new Date(session.startTime).toLocaleString() : "TBD"}
+                      <p className="text-[#5F524B] mt-0.5 flex gap-2">
+                        <span>{session.startTime ? new Date(session.startTime).toLocaleString() : "TBD"}</span>
+                        <span className="text-[#BF9270] font-semibold">{session.mode}</span>
                       </p>
                     </div>
 
@@ -128,6 +136,42 @@ export function OrganizerSessionsPage() {
               onChange={(event) => setStart(event.target.value)}
               required
             />
+
+            <div className="flex flex-col gap-1.5">
+              <label className="font-sans text-xs font-bold uppercase tracking-wider text-[#1A1412]">
+                Delivery Mode
+              </label>
+              <select
+                value={mode}
+                onChange={(e) => setMode(e.target.value as any)}
+                className="w-full bg-[#FAFAFA] border border-[#DFC1B0] rounded-lg px-4 py-2.5 text-sm font-sans text-[#1A1412] focus:outline-none focus:border-[#BF9270] focus:ring-1 focus:ring-[#BF9270]"
+              >
+                <option value="ONLINE">Online (Google Meet)</option>
+                <option value="OFFLINE">Offline (In-Person)</option>
+                <option value="HYBRID">Hybrid (Both)</option>
+              </select>
+            </div>
+
+            {(mode === "ONLINE" || mode === "HYBRID") && (
+              <Input
+                label="Google Meet URL"
+                type="url"
+                placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                value={meetingUrl}
+                onChange={(event) => setMeetingUrl(event.target.value)}
+                required
+              />
+            )}
+
+            {(mode === "OFFLINE" || mode === "HYBRID") && (
+              <Input
+                label="Physical Venue"
+                placeholder="Room 101, Main Building"
+                value={venue}
+                onChange={(event) => setVenue(event.target.value)}
+                required
+              />
+            )}
 
             {create.isError ? <ErrorState message="Failed to create session." /> : null}
 

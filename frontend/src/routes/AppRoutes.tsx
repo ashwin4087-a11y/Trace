@@ -37,8 +37,6 @@ import { OrganizerWorkshopDetailsPage } from "../pages/organizer/WorkshopDetails
 import { OrganizerWorkshopsPage } from "../pages/organizer/Workshops";
 import { AdminDashboardPage } from "../pages/admin/Dashboard";
 import { AuditLogsPage } from "../pages/admin/AuditLogs";
-import { DepartmentsPage } from "../pages/admin/Departments";
-import { OrganizationsPage } from "../pages/admin/Organizations";
 import { OrganizersPage } from "../pages/admin/Organizers";
 import { SettingsPage } from "../pages/admin/Settings";
 import { UsersPage } from "../pages/admin/Users";

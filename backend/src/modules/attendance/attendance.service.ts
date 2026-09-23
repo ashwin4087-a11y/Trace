@@ -23,14 +23,40 @@ export async function summarize(userId: string, workshopId: string) {
     include: { session: true },
   });
 
+  // AUREX 2026: Duration calculation
+  let totalPercentageAccumulated = 0;
+  
+  for (const session of sessions) {
+    const record = records.find(r => r.sessionId === session.id);
+    if (!record || record.status !== "PRESENT") continue;
+
+    // Check if it was an online monitored session
+    const monitoring = await prisma.attendanceMonitoringSession.findFirst({
+      where: { sessionId: session.id, userId, status: "COMPLETED" },
+      orderBy: { createdAt: "desc" }
+    });
+
+    if (monitoring && monitoring.endedAt) {
+      // Calculate duration percentage
+      const durationMs = monitoring.endedAt.getTime() - monitoring.createdAt.getTime();
+      const expectedDurationMs = 60 * 60 * 1000; // Assume 1 hour for AUREX if not specified
+      let pct = (durationMs / expectedDurationMs) * 100;
+      if (pct > 100) pct = 100;
+      totalPercentageAccumulated += pct;
+    } else {
+      totalPercentageAccumulated += 100; // Offline or legacy attendance gets 100%
+    }
+  }
+
   const attended = records.filter(r => r.status === "PRESENT").length;
   const absent = records.filter(r => r.status === "ABSENT").length;
+  const overallPercentage = total === 0 ? 0 : totalPercentageAccumulated / total;
 
   return {
     attended,
     absent,
     total,
-    percentage: calculateAttendancePercentage(attended, total),
+    percentage: overallPercentage,
     records,
   };
 }

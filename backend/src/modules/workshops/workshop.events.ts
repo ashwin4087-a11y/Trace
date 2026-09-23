@@ -29,6 +29,15 @@ export type WorkshopDomainEvent =
       status: string;
       updatedAt: Date;
       source: string;
+    }
+  | {
+      type: "ATTENDANCE_VERIFIED";
+      attendanceId: string;
+      sessionId: string;
+      registrationId: string;
+      userId: string;
+      method: string;
+      verifiedAt: Date;
     };
 
 type Handler = (event: WorkshopDomainEvent) => Promise<void>;

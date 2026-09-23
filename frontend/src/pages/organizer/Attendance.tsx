@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { OrganizerLayout } from "../../components/layout/OrganizerLayout";
 import { Input } from "../../components/common/Input";
 import { Loader } from "../../components/common/Loader";
@@ -7,11 +7,12 @@ import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
 import { markAttendance, workshopAttendance } from "../../services/attendance.service";
-import { listSessions } from "../../services/session.service";
+import { listSessions, updateSession } from "../../services/session.service";
 
 export function OrganizerAttendancePage() {
   const workshops = useWorkshopList();
   const workshopId = workshops.data?.[0]?.id ?? "";
+  const client = useQueryClient();
 
   const sessions = useQuery({
     queryKey: ["sessions", workshopId],
@@ -25,15 +26,68 @@ export function OrganizerAttendancePage() {
     enabled: Boolean(workshopId),
   });
 
+  const [selectedSessionId, setSelectedSessionId] = useState("");
+  const sessionId = selectedSessionId || (sessions.data?.[0]?.id ?? "");
+  
+  const selectedSession = sessions.data?.find((s) => s.id === sessionId);
+
   const [userId, setUserId] = useState("");
   const [message, setMessage] = useState("");
-  const sessionId = sessions.data?.[0]?.id ?? "";
+
+  const toggleSessionStatus = useMutation({
+    mutationFn: (newStatus: "LIVE" | "COMPLETED") => updateSession(sessionId, { status: newStatus }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["sessions", workshopId] }),
+  });
 
   return (
     <OrganizerLayout title="Faculty Attendance Management">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Manual Attendance Marking */}
         <div className="lg:col-span-5 flex flex-col gap-6">
+          <div className="bg-[#FFFFFF] border border-[#DFC1B0] rounded-xl p-6 shadow-xs flex flex-col gap-4">
+            <div className="border-b border-[#DFC1B0]/60 pb-3">
+              <span className="font-sans text-xs font-bold uppercase tracking-wider text-[#BF9270]">
+                Active Session
+              </span>
+              <h3 className="font-serif text-lg font-semibold text-[#1A1412] mt-0.5">
+                Session Control
+              </h3>
+            </div>
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="font-sans text-xs font-bold uppercase tracking-wider text-[#1A1412]">
+                Select Session
+              </label>
+              <select
+                value={sessionId}
+                onChange={(e) => setSelectedSessionId(e.target.value)}
+                className="w-full bg-[#FAFAFA] border border-[#DFC1B0] rounded-lg px-4 py-2.5 text-sm font-sans text-[#1A1412] focus:outline-none focus:border-[#BF9270] focus:ring-1 focus:ring-[#BF9270]"
+              >
+                {sessions.data?.map((s) => (
+                  <option key={s.id} value={s.id}>{s.title} ({s.status})</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedSession?.status === "SCHEDULED" && (
+              <TraceButton onClick={() => toggleSessionStatus.mutate("LIVE")} disabled={toggleSessionStatus.isPending}>
+                Start Attendance (Go LIVE)
+              </TraceButton>
+            )}
+
+            {selectedSession?.status === "LIVE" && (
+              <TraceButton variant="secondary" onClick={() => toggleSessionStatus.mutate("COMPLETED")} disabled={toggleSessionStatus.isPending}>
+                End Session (Close Attendance)
+              </TraceButton>
+            )}
+            
+            {selectedSession?.status === "COMPLETED" && (
+              <div className="p-3 bg-[#FFEDDB] border border-[#BF9270] rounded-lg text-xs font-semibold text-[#1A1412] text-center">
+                Session is COMPLETED.
+              </div>
+            )}
+          </div>
+
           <form
             className="bg-[#FFFFFF] border border-[#DFC1B0] rounded-xl p-6 shadow-xs flex flex-col gap-4"
             onSubmit={async (event) => {
@@ -98,6 +152,7 @@ export function OrganizerAttendancePage() {
                     <tr className="border-b border-[#DFC1B0]/60 text-[#5F524B] uppercase tracking-wider font-bold">
                       <th className="py-2.5 px-3">Participant Email</th>
                       <th className="py-2.5 px-3">Session Title</th>
+                      <th className="py-2.5 px-3">Method</th>
                       <th className="py-2.5 px-3">Status</th>
                     </tr>
                   </thead>
@@ -108,6 +163,7 @@ export function OrganizerAttendancePage() {
                           {item.user?.email || "Scholar"}
                         </td>
                         <td className="py-3 px-3 text-[#5F524B]">{item.session?.title || "Session"}</td>
+                        <td className="py-3 px-3 text-[#5F524B]">{item.method}</td>
                         <td className="py-3 px-3">
                           <TraceBadge variant={item.status === "PRESENT" ? "terracotta" : "cream"}>
                             {item.status}

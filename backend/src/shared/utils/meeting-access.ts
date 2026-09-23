@@ -6,5 +6,7 @@ export function canSeeMeetingLinks(input: {
 }): boolean {
   if (input.role === "ADMIN") return true;
   if (input.userId && input.userId === input.organizerId) return true;
-  return input.registrationStatus === "CONFIRMED";
+  // Participants must never see meeting links through general APIs.
+  // They must use the secure /access endpoint after attendance verification.
+  return false;
 }

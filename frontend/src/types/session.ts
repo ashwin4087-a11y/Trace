@@ -10,4 +10,5 @@ export type WorkshopSession = {
   recordingUrl?: string | null;
   venue?: string | null;
   status: string;
+  mode?: string;
 };

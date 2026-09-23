@@ -46,7 +46,11 @@ async function deliver(input: {
     });
   }
   if (prefs?.emailEnabled !== false && input.emailMessage) {
-    await sendEmail({ to: input.email, ...input.emailMessage });
+    try {
+      await sendEmail({ to: input.email, ...input.emailMessage });
+    } catch (error) {
+      console.error(`Failed to send email notification to ${input.email}:`, error);
+    }
   }
 }
 

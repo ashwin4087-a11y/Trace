@@ -55,7 +55,7 @@ async function generateSlug(title: string, excludeId?: string): Promise<string> 
 export async function assertCanManageWorkshop(user: AuthUser, workshopId: string) {
   const workshop = await prisma.workshop.findUnique({ where: { id: workshopId } });
   if (!workshop) throw new ApiError(404, "NOT_FOUND", "Workshop not found");
-  const roles = user.roles.length ? user.roles : [user.role];
+  const roles = user.roles?.length ? user.roles : [user.role];
   if (roles.includes("ADMIN")) return workshop;
   if (roles.includes("ORGANIZER") && workshop.organizerId === user.id) return workshop;
   throw new ApiError(403, "FORBIDDEN", "You can only manage your own workshops");
@@ -96,7 +96,7 @@ export async function getWorkshop(user: AuthUser | undefined, id: string) {
     },
   });
   if (!workshop) throw new ApiError(404, "NOT_FOUND", "Workshop not found");
-  const roles = user?.roles.length ? user.roles : user ? [user.role] : [];
+  const roles = user?.roles?.length ? user.roles : user ? [user.role] : [];
   const canSeeDraft =
     user && (roles.includes("ADMIN") || (roles.includes("ORGANIZER") && workshop.organizerId === user.id));
   if (workshop.status !== "PUBLISHED" && !canSeeDraft) {

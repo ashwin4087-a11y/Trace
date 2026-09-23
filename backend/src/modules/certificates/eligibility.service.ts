@@ -32,8 +32,7 @@ export async function evaluateCertificateEligibility(workshopId: string, registr
 
   // 2. Attendance requirement
   const summary = await summarize(registration.userId, workshopId);
-  const settings = await getSettings();
-  const requiredAttendancePercentage = settings.certificateMinPercent;
+  const requiredAttendancePercentage = 90; // AUREX 2026: Hardcoded 90% threshold
   const attendanceRequirementMet = isCertificateEligible(summary.percentage, requiredAttendancePercentage);
   
   if (!attendanceRequirementMet) {

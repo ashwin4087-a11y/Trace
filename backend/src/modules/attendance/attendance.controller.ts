@@ -52,3 +52,25 @@ export const summary = asyncHandler(async (req, res) => {
     data: await attendance.summarize(userId, req.params.workshopId),
   });
 });
+
+import * as monitoring from "./monitoring.service";
+
+export const myQr = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.generateMyQr(req.user!, req.params.sessionId) });
+});
+
+export const verifyQr = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.verifyMyQr(req.user!, req.body) });
+});
+
+export const heartbeat = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.heartbeat(req.user!, req.params.id) });
+});
+
+export const fullscreenViolation = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.fullscreenViolation(req.user!, req.params.id) });
+});
+
+export const endMonitoring = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.endMonitoring(req.user!, req.params.id) });
+});

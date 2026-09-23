@@ -51,31 +51,45 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
   
   const registration = await prisma.registration.findUnique({
     where: { workshopId_userId: { workshopId: session.workshopId, userId: user.id } },
-    select: { status: true }
+    select: { status: true, id: true }
   });
   
-  if (
-    canSeeMeetingLinks({
-      role: user.role,
-      userId: user.id,
-      organizerId: session.workshop.organizerId,
-      registrationStatus: registration?.status,
-    })
-  ) {
-    return {
-      id: session.id,
-      title: session.title,
-      startTime: session.startTime,
-      endTime: session.endTime,
-      mode: session.mode,
-      meetingProvider: session.meetingProvider,
-      meetingUrl: session.meetingUrl,
-      recordingUrl: session.status === "COMPLETED" ? session.recordingUrl : null,
-      status: session.status
-    };
+  const isOrganizerOrAdmin = user.role === "ADMIN" || (user.role === "ORGANIZER" && session.workshop.organizerId === user.id);
+
+  if (!isOrganizerOrAdmin) {
+    if (registration?.status !== "CONFIRMED") {
+      throw new ApiError(403, "FORBIDDEN", "Only confirmed participants can access this session");
+    }
+
+    // Check QR attendance monitoring session
+    const monitoring = await prisma.attendanceMonitoringSession.findFirst({
+      where: {
+        sessionId,
+        userId: user.id,
+        status: "ACTIVE"
+      }
+    });
+
+    if (!monitoring) {
+      return {
+        access: "LOCKED",
+        reason: "ATTENDANCE_VERIFICATION_REQUIRED"
+      };
+    }
   }
-  
-  throw new ApiError(403, "FORBIDDEN", "You do not have access to this session's meeting information");
+
+  return {
+    access: "UNLOCKED",
+    id: session.id,
+    title: session.title,
+    startTime: session.startTime,
+    endTime: session.endTime,
+    mode: session.mode,
+    meetingProvider: session.meetingProvider,
+    meetingUrl: session.meetingUrl,
+    recordingUrl: session.status === "COMPLETED" ? session.recordingUrl : null,
+    status: session.status
+  };
 }
 
 async function validateSessionOverlap(workshopId: string, startTime: Date, endTime: Date, ignoreSessionId?: string) {

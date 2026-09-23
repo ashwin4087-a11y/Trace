@@ -324,6 +324,27 @@ export async function publishWorkshop(user: AuthUser, id: string) {
     startDate: updated.startDate!.toISOString(),
     publishedAt: updated.publishedAt!.toISOString(),
   });
+
+  // Trigger bulk email to all participants
+  setImmediate(async () => {
+    try {
+      const { sendEmail } = await import("../../integrations/email/email.provider");
+      const participants = await prisma.user.findMany({
+        where: { role: "PARTICIPANT", status: "ACTIVE" },
+        select: { email: true, firstName: true }
+      });
+      for (const p of participants) {
+        await sendEmail({
+          to: p.email,
+          subject: `New Workshop Published: ${updated.title}`,
+          text: `Hello ${p.firstName},\n\nA new workshop "${updated.title}" has been published. Registration is now open!\n\nBest,\nAdmin`,
+          html: `<p>Hello ${p.firstName},</p><p>A new workshop <strong>${updated.title}</strong> has been published. Registration is now open!</p><p>Best,<br>Admin</p>`
+        }).catch(err => console.error(`Failed to send email to ${p.email}:`, err));
+      }
+    } catch (err) {
+      console.error("Bulk email error on publish:", err);
+    }
+  });
   
   return updated;
 }

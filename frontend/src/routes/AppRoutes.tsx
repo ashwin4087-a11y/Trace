@@ -94,8 +94,7 @@ export function AppRoutes() {
           <Route path="/admin" element={<AdminDashboardPage />} />
           <Route path="/admin/users" element={<UsersPage />} />
           <Route path="/admin/organizers" element={<OrganizersPage />} />
-          <Route path="/admin/organizations" element={<OrganizationsPage />} />
-          <Route path="/admin/departments" element={<DepartmentsPage />} />
+
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
         </Route>

@@ -9,8 +9,7 @@ const items = [
   { to: "/admin", label: "Overview" },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/organizers", label: "Organizers" },
-  { to: "/admin/organizations", label: "Organizations" },
-  { to: "/admin/departments", label: "Departments" },
+
   { to: "/admin/audit-logs", label: "Audit Logs" },
   { to: "/admin/settings", label: "Settings" },
 ];

@@ -93,11 +93,20 @@ export async function updateUser(
     organizationId?: string | null;
     departmentId?: string | null;
     preferredLanguage?: "EN" | "TA" | "EN_TA";
+    [key: string]: any; // Allow other fields to be passed but ignore them
   },
 ) {
   const existing = await prisma.user.findUnique({ where: { id }, select: { role: true, status: true } });
   if (!existing) throw new ApiError(404, "NOT_FOUND", "User not found");
-  await prisma.user.update({ where: { id }, data: input });
+  
+  const data: Prisma.UserUpdateInput = {};
+  if (input.firstName !== undefined) data.firstName = input.firstName;
+  if (input.lastName !== undefined) data.lastName = input.lastName;
+  if (input.organizationId !== undefined) data.organizationId = input.organizationId;
+  if (input.departmentId !== undefined) data.departmentId = input.departmentId;
+  if (input.preferredLanguage !== undefined) data.preferredLanguage = input.preferredLanguage;
+
+  await prisma.user.update({ where: { id }, data });
   await recordAudit(actorId, "UPDATE_USER", "User", id);
   return getUser(id);
 }

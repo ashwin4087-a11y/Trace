@@ -40,7 +40,7 @@ export function LoginPage() {
             </div>
           </div>
 
-          <Input label="Email Address" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          <Input label="Email Address or Username" type="text" value={email} onChange={(event) => setEmail(event.target.value)} required />
           <PasswordInput label="Password" value={password} onChange={(event) => setPassword(event.target.value)} required />
 
           {error ? <ErrorState message={error} /> : null}

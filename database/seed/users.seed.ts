@@ -4,11 +4,11 @@ import { prisma } from "./client";
 
 export async function seedUsers(passwords: { admin: string; organizer: string; participant: string }) {
   const admin = await prisma.user.upsert({
-    where: { email: process.env.SEED_ADMIN_EMAIL || "admin@aurex.local" },
+    where: { email: "admin" },
     update: {},
     create: {
-      email: process.env.SEED_ADMIN_EMAIL || "admin@aurex.local",
-      passwordHash: await bcrypt.hash(passwords.admin, 12),
+      email: "admin",
+      passwordHash: await bcrypt.hash("admin123", 12),
       firstName: "Aurex",
       lastName: "Admin",
       role: "ADMIN",

@@ -95,9 +95,20 @@ export function JitsiMeeting({ roomName, displayName, onFirstJoin }: JitsiMeetin
         }
       });
 
+    // @ts-ignore
+    window.kickJitsiUser = () => {
+      if (api) {
+        // @ts-ignore
+        api.executeCommand("hangup");
+        api.dispose();
+      }
+    };
+
     return () => {
       disposed = true;
       api?.dispose();
+      // @ts-ignore
+      delete window.kickJitsiUser;
     };
   }, [displayName, roomName]);
 

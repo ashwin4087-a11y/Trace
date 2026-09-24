@@ -92,6 +92,14 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
     jitsiRoomName = updated.jitsiRoomName;
   }
 
+  let monitoringSessionObj = undefined;
+  if (user.role === "PARTICIPANT" && session.mode !== "OFFLINE" && session.status !== "COMPLETED") {
+    const monitoring = await prisma.attendanceMonitoringSession.findFirst({
+      where: { sessionId, userId: user.id, status: "ACTIVE" }
+    });
+    monitoringSessionObj = monitoring || undefined;
+  }
+
   return {
     access: "GRANTED",
     id: session.id,
@@ -105,7 +113,8 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
     meetingLive: session.meetingLive,
     recordingUrl: session.status === "COMPLETED" ? session.recordingUrl : null,
     status: session.status,
-    workshopId: session.workshopId
+    workshopId: session.workshopId,
+    monitoringSession: monitoringSessionObj,
   };
 }
 

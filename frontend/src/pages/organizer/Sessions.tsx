@@ -135,8 +135,12 @@ export function OrganizerSessionsPage() {
                         <div className="flex items-center gap-2 mt-1">
                           {session.status === "SCHEDULED" && (
                             <TraceButton size="sm" onClick={async () => {
-                              await updateSession(session.id, { status: "LIVE" });
-                              client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                              try {
+                                await updateSession(session.id, { status: "LIVE" });
+                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                              } catch (err: any) {
+                                alert(errorText(err));
+                              }
                             }}>
                               Start Session
                             </TraceButton>
@@ -144,8 +148,12 @@ export function OrganizerSessionsPage() {
                           {session.status === "LIVE" && (
                             <TraceButton size="sm" variant="danger" onClick={async () => {
                               if (confirm("Are you sure you want to end this session? This will finalize attendance and close the meeting.")) {
-                                await endSession(session.id);
-                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                                try {
+                                  await endSession(session.id);
+                                  client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                                } catch (err: any) {
+                                  alert(errorText(err));
+                                }
                               }
                             }}>
                               End Session
@@ -169,20 +177,35 @@ export function OrganizerSessionsPage() {
                             
                             {session.status === "LIVE" && !session.meetingLive && (
                               <TraceButton size="sm" onClick={async () => {
-                                await meetingStart(session.id);
-                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                                try {
+                                  await meetingStart(session.id);
+                                  client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                                } catch (err: any) {
+                                  alert(errorText(err));
+                                }
                               }}>
                                 Make Meeting Live
                               </TraceButton>
                             )}
                             
                             {session.status === "LIVE" && session.meetingLive && (
-                              <TraceButton size="sm" variant="secondary" onClick={async () => {
-                                await meetingEnd(session.id);
-                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
-                              }}>
-                                End Meeting
-                              </TraceButton>
+                              <div className="flex gap-2">
+                                <a href={`https://meet.jit.si/trace-session-${session.id}`} target="_blank" rel="noopener noreferrer">
+                                  <TraceButton size="sm" icon="video_camera_front">
+                                    Join Meeting
+                                  </TraceButton>
+                                </a>
+                                <TraceButton size="sm" variant="secondary" onClick={async () => {
+                                  try {
+                                    await meetingEnd(session.id);
+                                    client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                                  } catch (err: any) {
+                                    alert(errorText(err));
+                                  }
+                                }}>
+                                  End Meeting
+                                </TraceButton>
+                              </div>
                             )}
                             
                             {session.status === "SCHEDULED" && (

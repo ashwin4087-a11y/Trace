@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ParticipantLayout } from "../../components/layout/ParticipantLayout";
 import { MaterialList } from "../../components/learning/MaterialList";
 import { Loader } from "../../components/common/Loader";
@@ -23,6 +23,8 @@ function SessionRow({ session }: { session: any }) {
   const [qrState, setQrState] = useState<{ qrPayload: string; expiresIn: number; sessionId: string; passcode: string; scanUrl?: string } | null>(null);
   const [verifyToken, setVerifyToken] = useState("");
   const [checkInComplete, setCheckInComplete] = useState(false);
+  const [isFullscreenStarted, setIsFullscreenStarted] = useState(false);
+  const violationsRef = useRef(0);
   
   const fetchAccess = async () => {
     try {
@@ -52,7 +54,7 @@ function SessionRow({ session }: { session: any }) {
 
   // Polling for Check-in Status (while not yet checked in)
   useEffect(() => {
-    if (session.status === "LIVE" && (!accessState || accessState.access !== "GRANTED")) {
+    if (session.status === "LIVE" && (!accessState || accessState.access === "LOCKED")) {
       const interval = setInterval(checkStatus, 5000);
       return () => clearInterval(interval);
     }
@@ -82,6 +84,20 @@ function SessionRow({ session }: { session: any }) {
       const handleFullscreenChange = () => {
         const isFullscreen = !!document.fullscreenElement;
         recordEvent(accessState.monitoringSession.id, isFullscreen ? "FULLSCREEN_ENTER" : "FULLSCREEN_EXIT").catch(() => {});
+        
+        if (!isFullscreen) {
+          violationsRef.current += 1;
+          if (violationsRef.current >= 4) {
+            alert("Session Terminated: You have exited full-screen mode too many times.");
+            // @ts-ignore
+            if (window.kickJitsiUser) window.kickJitsiUser();
+            // Force status to completed locally for UX
+            setAccessState((prev: any) => ({ ...prev, access: "DENIED", reason: "TERMINATED_BY_SYSTEM" }));
+          } else {
+            alert(`WARNING (${violationsRef.current}/3): You have exited full-screen mode. You must re-enter full-screen to continue the session.`);
+            setIsFullscreenStarted(false);
+          }
+        }
       };
       
       document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -137,6 +153,7 @@ function SessionRow({ session }: { session: any }) {
 
   const joinMeetingMutation = useMutation({
     mutationFn: () => recordMeetingJoin(session.id),
+    onSuccess: () => fetchAccess(),
   });
 
   const getScanUrl = () => {
@@ -223,14 +240,37 @@ function SessionRow({ session }: { session: any }) {
         </div>
       )}
 
-      {checkInComplete && session.status === "LIVE" && accessState?.access !== "GRANTED" && (
+      {checkInComplete && session.status === "LIVE" && accessState?.access !== "GRANTED" && accessState?.reason !== "TERMINATED_BY_SYSTEM" && (
         <div className="mt-2 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           <p className="font-semibold">Attendance Recorded</p>
           <p className="mt-1">Your check-in is saved. The meeting will appear here when the organizer starts it.</p>
         </div>
       )}
 
-      {session.status === "LIVE" && accessState?.access === "GRANTED" && accessState.jitsiRoomName && (
+      {accessState?.access === "DENIED" && accessState?.reason === "TERMINATED_BY_SYSTEM" && (
+        <div className="mt-2 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <p className="font-semibold">Session Terminated</p>
+          <p className="mt-1">You have been removed from this session due to repeated full-screen violations.</p>
+        </div>
+      )}
+
+      {session.status === "LIVE" && accessState?.access === "GRANTED" && accessState.jitsiRoomName && !isFullscreenStarted && (
+        <div className="flex flex-col items-center justify-center py-6 bg-[#FAFAFA] border border-[#DFC1B0] rounded-lg">
+          <h4 className="text-lg font-semibold text-[#1A1412] mb-2">Meeting Ready</h4>
+          <p className="text-sm text-[#5F524B] mb-4 text-center max-w-md">You are required to remain in full-screen mode during this session. Exiting full-screen multiple times will result in automatic termination.</p>
+          <TraceButton onClick={() => {
+            document.documentElement.requestFullscreen().then(() => {
+              setIsFullscreenStarted(true);
+            }).catch(() => {
+              alert("Please allow full-screen mode in your browser to join the meeting.");
+            });
+          }}>
+            Enter Meeting & Full-Screen
+          </TraceButton>
+        </div>
+      )}
+
+      {session.status === "LIVE" && accessState?.access === "GRANTED" && accessState.jitsiRoomName && isFullscreenStarted && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between gap-3">
             <span className="font-semibold text-[#1A1412]">Join Session</span>

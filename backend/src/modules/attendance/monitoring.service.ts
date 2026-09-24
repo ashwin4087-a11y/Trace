@@ -3,6 +3,7 @@ import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import type { AuthUser } from "../../shared/types/http";
 import { sha256 } from "../../shared/utils/tokens";
+import { firstJoinAt } from "./attendance-timing";
 
 import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 
@@ -145,7 +146,6 @@ export async function verifyMyQr(user: AuthUser, input: { sessionId: string; tok
     update: {
       status: "PRESENT",
       method: "QR",
-      recordedAt: new Date(),
     }
   });
 
@@ -183,14 +183,49 @@ export async function verifyMyQr(user: AuthUser, input: { sessionId: string; tok
       verifiedAt: attendance.recordedAt
     },
     meetingAccess: {
-      status: session.meetingUrl ? "UNLOCKED" : "WAITING_FOR_HOST",
-      meetingUrl: session.meetingUrl,
+      status: "RECORDED",
+      workshopId: session.workshopId,
     },
     monitoringSession: {
       id: monitoring.id,
       status: monitoring.status
     }
   };
+}
+
+export async function recordFirstMeetingJoin(user: AuthUser, sessionId: string) {
+  const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
+  if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
+  if (session.status !== "LIVE" || !session.meetingLive) {
+    throw new ApiError(403, "MEETING_NOT_LIVE", "The meeting is not currently live");
+  }
+
+  const registration = await prisma.registration.findUnique({
+    where: { workshopId_userId: { workshopId: session.workshopId, userId: user.id } },
+  });
+  if (!registration || registration.status !== "CONFIRMED") {
+    throw new ApiError(403, "FORBIDDEN", "Registration is not confirmed");
+  }
+
+  const attendance = await prisma.attendance.findUnique({
+    where: { sessionId_registrationId: { sessionId, registrationId: registration.id } },
+  });
+  if (!attendance || attendance.status !== "PRESENT") {
+    throw new ApiError(403, "ATTENDANCE_REQUIRED", "Complete QR check-in before joining the meeting");
+  }
+
+  const now = new Date();
+  await prisma.attendance.updateMany({
+    where: { id: attendance.id, joinedAt: null, finalizedAt: null },
+    data: { joinedAt: firstJoinAt(attendance.joinedAt, now) },
+  });
+
+  const updated = await prisma.attendance.findUnique({
+    where: { id: attendance.id },
+    select: { joinedAt: true },
+  });
+
+  return { joinedAt: updated?.joinedAt ?? null, status: "ACTIVE" as const };
 }
 
 export async function heartbeat(user: AuthUser, monitoringId: string) {
@@ -245,14 +280,14 @@ export async function endMonitoring(user: AuthUser, monitoringId: string) {
     throw new ApiError(404, "NOT_FOUND", "Monitoring session not found");
   }
 
-  return prisma.attendanceMonitoringSession.update({
-    where: { id: monitoringId },
+  await prisma.monitoringEvent.create({
     data: {
-      status: "COMPLETED",
-      terminationReason: "USER_EXITED",
-      endedAt: new Date(),
-    }
+      monitoringSessionId: monitoringId,
+      type: "JITSI_LEFT",
+    },
   });
+
+  return monitoring;
 }
 
 export async function getSessionStatus(user: AuthUser, sessionId: string) {

@@ -67,6 +67,10 @@ export const verifyQr = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await monitoring.verifyMyQr(req.user!, req.body) });
 });
 
+export const meetingJoin = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.recordFirstMeetingJoin(req.user!, req.params.sessionId) });
+});
+
 export const heartbeat = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await monitoring.heartbeat(req.user!, req.params.id) });
 });

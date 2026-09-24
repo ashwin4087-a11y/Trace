@@ -5,7 +5,6 @@ import { verifyMyQr } from "../../services/attendance.service";
 import { Loader } from "../../components/common/Loader";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { ErrorState } from "../../components/common/ErrorState";
-import { getSessionAccess } from "../../services/session.service";
 import { useAuth } from "../../context/AuthContext";
 
 export function ScanVerifyPage() {
@@ -34,20 +33,10 @@ export function ScanVerifyPage() {
       } else {
         setCheckInAt(new Date());
       }
-      try {
-        const access = await getSessionAccess(sessionId!);
-        if (data?.meetingAccess?.meetingUrl) {
-          setTimeout(() => {
-            window.location.assign(data.meetingAccess.meetingUrl);
-          }, 2200);
-        } else if (access.workshopId) {
-          // Auto-navigate to workshop learning page after showing confirmation
-          setTimeout(() => {
-            navigate(`/participant/workshops/${access.workshopId}/learn`, { replace: true });
-          }, 2200);
-        }
-      } catch (err) {
-        console.error("Failed to get session access", err);
+      if (data?.meetingAccess?.workshopId) {
+        setTimeout(() => {
+          navigate(`/participant/workshops/${data.meetingAccess.workshopId}/learn`, { replace: true });
+        }, 2200);
       }
     }
   });

@@ -1,10 +1,12 @@
 import { prisma } from "../../config/database";
+import type { Prisma } from "@prisma/client";
 import { normalizeMeetingUrl } from "../../integrations/meetings/meeting.provider";
 import { ApiError } from "../../shared/errors/api-error";
 import type { AuthUser } from "../../shared/types/http";
 import { canSeeMeetingLinks } from "../../shared/utils/meeting-access";
 import { randomToken, sha256 } from "../../shared/utils/tokens";
 import { assertCanManageWorkshop } from "../workshops/workshop.service";
+import { finalizedDurationSeconds, finalizedPercentage } from "../attendance/attendance-timing";
 
 export async function listSessions(user: AuthUser | undefined, workshopId: string) {
   const workshop = await prisma.workshop.findUnique({
@@ -38,7 +40,8 @@ export async function listSessions(user: AuthUser | undefined, workshopId: strin
   return sessions.map((session) => ({ 
     ...session, 
     meetingUrl: null,
-    recordingUrl: null
+    recordingUrl: null,
+    jitsiRoomName: null,
   }));
 }
 
@@ -65,6 +68,10 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
       return { access: "LOCKED", reason: "SESSION_ENDED" };
     }
 
+    if (!session.meetingLive) {
+      return { access: "LOCKED", reason: "MEETING_NOT_LIVE" };
+    }
+
     // Check QR attendance monitoring session
     const monitoring = await prisma.attendanceMonitoringSession.findFirst({
       where: { sessionId, userId: user.id, status: "ACTIVE" }
@@ -75,8 +82,15 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
     }
   }
 
-  // A configured meeting URL is released after the participant passes the attendance gate.
-  const meetingUrl = session.meetingUrl;
+  let jitsiRoomName = session.jitsiRoomName;
+  if (!jitsiRoomName) {
+    const updated = await prisma.workshopSession.update({
+      where: { id: session.id },
+      data: { jitsiRoomName: `trace-${randomToken(18)}` },
+      select: { jitsiRoomName: true },
+    });
+    jitsiRoomName = updated.jitsiRoomName;
+  }
 
   return {
     access: "GRANTED",
@@ -86,7 +100,8 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
     endTime: session.endTime,
     mode: session.mode,
     meetingProvider: session.meetingProvider,
-    meetingUrl,
+    meetingUrl: null,
+    jitsiRoomName,
     meetingLive: session.meetingLive,
     recordingUrl: session.status === "COMPLETED" ? session.recordingUrl : null,
     status: session.status,
@@ -110,21 +125,90 @@ export async function makeMeetingLive(user: AuthUser, sessionId: string) {
   if (session.status !== "LIVE") {
     throw new ApiError(400, "INVALID_STATE", "Session must be LIVE before making the meeting live");
   }
-  if (!session.meetingUrl) {
-    throw new ApiError(400, "NO_MEETING_URL", "No meeting URL configured for this session");
-  }
   return prisma.workshopSession.update({
     where: { id: sessionId },
-    data: { meetingLive: true },
-    select: { id: true, meetingLive: true }
+    data: {
+      meetingLive: true,
+      jitsiRoomName: session.jitsiRoomName ?? `trace-${randomToken(18)}`,
+    },
+    select: { id: true, meetingLive: true, jitsiRoomName: true }
   });
+}
+
+async function finalizeSessionAttendance(
+  tx: Prisma.TransactionClient,
+  sessionId: string,
+  sessionDurationSeconds: number,
+  threshold: number,
+  now: Date,
+) {
+  const activeMonitoring = await tx.attendanceMonitoringSession.findMany({
+    where: { sessionId, status: "ACTIVE" },
+  });
+
+  for (const monitoring of activeMonitoring) {
+    await tx.attendanceMonitoringSession.update({
+      where: { id: monitoring.id },
+      data: { status: "COMPLETED", endedAt: now, terminationReason: "SESSION_ENDED" },
+    });
+  }
+
+  const attendanceRecords = await tx.attendance.findMany({
+    where: { sessionId, status: "PRESENT" },
+    include: {
+      attendanceMonitoringSession: { select: { endedAt: true } },
+      registration: { select: { id: true } },
+    },
+  });
+
+  for (const attendance of attendanceRecords) {
+    const calculatedDuration = finalizedDurationSeconds(attendance.joinedAt, now, sessionDurationSeconds);
+    const presentSeconds = attendance.durationSeconds ?? calculatedDuration ?? 0;
+    const percentage = finalizedPercentage(attendance.joinedAt ? presentSeconds : null, sessionDurationSeconds);
+    const eligible = Boolean(attendance.joinedAt) && percentage >= threshold;
+
+    if (!attendance.finalizedAt) {
+      await tx.attendance.update({
+        where: { id: attendance.id },
+        data: { finalizedAt: now, durationSeconds: presentSeconds },
+      });
+    }
+
+    await tx.attendanceComputation.upsert({
+      where: { registrationId_workshopSessionId: {
+        registrationId: attendance.registrationId,
+        workshopSessionId: sessionId,
+      } },
+      create: {
+        registrationId: attendance.registrationId,
+        workshopSessionId: sessionId,
+        presentSeconds,
+        awaySeconds: Math.max(0, sessionDurationSeconds - presentSeconds),
+        scheduledSeconds: sessionDurationSeconds,
+        percentage,
+        status: eligible ? "COMPLETED" : "ABSENT",
+        certificateEligible: eligible,
+        policyVersion: "v2-jitsi-first-join",
+      },
+      update: {
+        presentSeconds,
+        awaySeconds: Math.max(0, sessionDurationSeconds - presentSeconds),
+        scheduledSeconds: sessionDurationSeconds,
+        percentage,
+        status: eligible ? "COMPLETED" : "ABSENT",
+        certificateEligible: eligible,
+        policyVersion: "v2-jitsi-first-join",
+        computedAt: now,
+      },
+    });
+  }
 }
 
 /** Organizer: revoke meeting link access (e.g. break period) */
 export async function endMeeting(user: AuthUser, sessionId: string) {
   const session = await prisma.workshopSession.findUnique({
     where: { id: sessionId },
-    include: { workshop: { select: { organizerId: true } } }
+    include: { workshop: { select: { organizerId: true, attendanceThresholdPercent: true } } }
   });
   if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
   if (user.role !== "ADMIN") {
@@ -132,11 +216,30 @@ export async function endMeeting(user: AuthUser, sessionId: string) {
       throw new ApiError(403, "FORBIDDEN", "You are not authorized to manage this session");
     }
   }
-  return prisma.workshopSession.update({
-    where: { id: sessionId },
-    data: { meetingLive: false },
-    select: { id: true, meetingLive: true }
+  if (!session.meetingLive) {
+    return { id: session.id, meetingLive: false };
+  }
+
+  const sessionDurationSeconds = Math.max(0, Math.round(
+    (session.endTime.getTime() - session.startTime.getTime()) / 1000,
+  ));
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.workshopSession.update({
+      where: { id: sessionId },
+      data: { status: "COMPLETED", meetingLive: false },
+    });
+    await finalizeSessionAttendance(
+      tx,
+      sessionId,
+      sessionDurationSeconds,
+      session.workshop.attendanceThresholdPercent,
+      now,
+    );
   });
+
+  return { id: session.id, meetingLive: false };
 }
 
 /** Organizer: end session — transactionally complete, finalize attendance, compute eligibility */
@@ -152,7 +255,7 @@ export async function endSession(user: AuthUser, sessionId: string) {
     }
   }
   if (session.status === "COMPLETED") {
-    throw new ApiError(400, "ALREADY_COMPLETED", "Session is already completed");
+    return { success: true, sessionId, status: "COMPLETED" };
   }
 
   const threshold = session.workshop.attendanceThresholdPercent;
@@ -168,65 +271,7 @@ export async function endSession(user: AuthUser, sessionId: string) {
       data: { status: "COMPLETED", meetingLive: false }
     });
 
-    // 2. Close all active monitoring sessions and record endedAt
-    const activeMonitoring = await tx.attendanceMonitoringSession.findMany({
-      where: { sessionId, status: "ACTIVE" },
-      include: { attendance: { select: { recordedAt: true, registrationId: true } } }
-    });
-
-    for (const mon of activeMonitoring) {
-      await tx.attendanceMonitoringSession.update({
-        where: { id: mon.id },
-        data: { status: "COMPLETED", endedAt: now, terminationReason: "SESSION_ENDED" }
-      });
-    }
-
-    // 3. Finalize attendance computation for every present participant
-    const attendanceRecords = await tx.attendance.findMany({
-      where: { sessionId, status: "PRESENT" },
-      include: {
-        attendanceMonitoringSession: { select: { endedAt: true } },
-        registration: { select: { id: true } }
-      }
-    });
-
-    for (const att of attendanceRecords) {
-      const checkIn = att.recordedAt;
-      const checkOut = att.attendanceMonitoringSession?.endedAt ?? now;
-      const presentSeconds = Math.round((checkOut.getTime() - checkIn.getTime()) / 1000);
-      const awaySeconds = Math.max(0, sessionDurationSeconds - presentSeconds);
-      const percentage = sessionDurationSeconds > 0
-        ? Math.min(100, Math.round((presentSeconds / sessionDurationSeconds) * 10000) / 100)
-        : 0;
-      const eligible = percentage >= threshold;
-
-      await tx.attendanceComputation.upsert({
-        where: { registrationId_workshopSessionId: {
-          registrationId: att.registrationId,
-          workshopSessionId: sessionId
-        }},
-        create: {
-          registrationId: att.registrationId,
-          workshopSessionId: sessionId,
-          presentSeconds,
-          awaySeconds,
-          scheduledSeconds: sessionDurationSeconds,
-          percentage,
-          status: eligible ? "COMPLETED" : "INSUFFICIENT",
-          certificateEligible: eligible,
-          policyVersion: "v1"
-        },
-        update: {
-          presentSeconds,
-          awaySeconds,
-          scheduledSeconds: sessionDurationSeconds,
-          percentage,
-          status: eligible ? "COMPLETED" : "INSUFFICIENT",
-          certificateEligible: eligible,
-          computedAt: now
-        }
-      });
-    }
+    await finalizeSessionAttendance(tx, sessionId, sessionDurationSeconds, threshold, now);
   });
 
   return { success: true, sessionId, status: "COMPLETED" };
@@ -275,17 +320,9 @@ export async function createSession(
   
   await validateSessionOverlap(input.workshopId, st, et);
   
-  let meetingUrl: string | null = null;
-  if (input.meetingUrl) {
-    try {
-      meetingUrl = normalizeMeetingUrl(input.meetingUrl).url;
-    } catch (error) {
-      throw new ApiError(400, "INVALID_MEETING_URL", error instanceof Error ? error.message : "Invalid URL");
-    }
-  }
-  
   const count = await prisma.workshopSession.count({ where: { workshopId: input.workshopId } });
   const sessionNumber = count + 1;
+  const isVirtual = input.mode === "ONLINE" || input.mode === "HYBRID";
   
   return prisma.workshopSession.create({
     data: {
@@ -296,10 +333,11 @@ export async function createSession(
       startTime: st,
       endTime: et,
       mode: input.mode,
-      meetingProvider: input.meetingProvider,
+      meetingProvider: isVirtual ? "JITSI" : undefined,
       trainerId: input.trainerId,
       trainerName: input.trainerName,
-      meetingUrl,
+      meetingUrl: null,
+      jitsiRoomName: isVirtual ? `trace-${randomToken(18)}` : null,
       venue: input.venue,
     },
   });

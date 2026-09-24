@@ -14,7 +14,7 @@ export async function updateSession(sessionId: string, body: Record<string, unkn
   return unwrap<WorkshopSession>(await api.patch(`/sessions/${sessionId}`, body));
 }
 export async function getSessionAccess(sessionId: string) {
-  return unwrap<{ access: string; meetingUrl?: string | null; meetingLive?: boolean; workshopId?: string; monitoringSession?: any }>(
+  return unwrap<{ access: string; meetingUrl?: string | null; jitsiRoomName?: string | null; meetingLive?: boolean; workshopId?: string; monitoringSession?: any }>(
     await api.get(`/sessions/${sessionId}/access`)
   );
 }

@@ -28,6 +28,7 @@ router.get("/attendance/me", attendance.mine);
 router.get("/sessions/:sessionId/my-attendance-qr", attendance.myQr);
 router.get("/sessions/:sessionId/status", attendance.sessionStatus);
 router.post("/qr/verify", attendance.verifyQr);
+router.post("/sessions/:sessionId/join", attendance.meetingJoin);
 router.post("/attendance-sessions/:id/heartbeat", attendance.heartbeat);
 router.post("/attendance-sessions/:id/event", attendance.recordEvent);
 router.post("/attendance-sessions/:id/end", attendance.endMonitoring);

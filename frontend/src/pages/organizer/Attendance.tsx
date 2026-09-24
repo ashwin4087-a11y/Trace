@@ -171,6 +171,7 @@ export function OrganizerAttendancePage() {
                     <tr className="border-b border-[#DFC1B0]/60 text-[#5F524B] uppercase tracking-wider font-bold">
                       <th className="py-2.5 px-3">Participant</th>
                       <th className="py-2.5 px-3">Check-in</th>
+                      <th className="py-2.5 px-3">Joined Meeting</th>
                       <th className="py-2.5 px-3">Duration</th>
                       <th className="py-2.5 px-3">Status</th>
                     </tr>
@@ -185,19 +186,24 @@ export function OrganizerAttendancePage() {
                         <td className="py-3 px-3 text-[#5F524B]">
                           {item.checkInAt ? new Date(item.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}
                         </td>
+                        <td className="py-3 px-3 text-[#5F524B]">
+                          {item.joinedAt ? new Date(item.joinedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}
+                        </td>
                         <td className="py-3 px-3 font-semibold text-[#1A1412]">
-                          {item.durationMinutes > 0 ? `${Math.floor(item.durationMinutes / 60)}h ${item.durationMinutes % 60}m` : "—"}
+                          {item.durationMinutes > 0 ? `${Math.floor(item.durationMinutes / 60)}h ${item.durationMinutes % 60}m` : item.joinedAt ? "0m" : "—"}
                         </td>
                         <td className="py-3 px-3 font-bold text-xs uppercase tracking-wider">
-                          {item.monitoringStatus === "ACTIVE" ? (
+                          {!item.joinedAt && item.status === "PRESENT" ? (
+                            <span className="text-[#5F524B]">NOT JOINED</span>
+                          ) : item.monitoringStatus === "ACTIVE" ? (
                             <span className="flex items-center gap-1.5 text-green-700">
                               <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                               ACTIVE
                             </span>
-                          ) : item.monitoringStatus === "COMPLETED" ? (
+                          ) : item.finalizedAt ? (
                             <span className="flex items-center gap-1.5 text-[#5F524B]">
                               <span className="w-2 h-2 rounded-full bg-gray-400"></span>
-                              COMPLETED
+                              FINALIZED
                             </span>
                           ) : (
                             <TraceBadge variant={item.status === "PRESENT" ? "terracotta" : "cream"}>

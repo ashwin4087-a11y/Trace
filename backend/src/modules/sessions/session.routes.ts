@@ -24,14 +24,6 @@ const createSchema = z.object({
     workshopId: z.string().uuid(),
     ...sessionSchemaBase,
   }).refine((data) => {
-    if (["ONLINE", "HYBRID"].includes(data.mode)) {
-      if (!data.meetingUrl) return false;
-    }
-    return true;
-  }, {
-    message: "Meeting URL is required for ONLINE or HYBRID sessions",
-    path: ["meetingUrl"],
-  }).refine((data) => {
     if (["OFFLINE", "HYBRID"].includes(data.mode)) {
       if (!data.venue) return false;
     }

@@ -30,6 +30,9 @@ export async function getSessionStatus(sessionId: string) {
 export async function verifyMyQr(sessionId: string, token: string) {
   return unwrap<any>(await api.post(`/attendance/qr/verify`, { sessionId, token }));
 }
+export async function recordMeetingJoin(sessionId: string) {
+  return unwrap<{ joinedAt: string | null; status: string }>(await api.post(`/attendance/sessions/${sessionId}/join`));
+}
 export async function heartbeat(monitoringSessionId: string) {
   return unwrap<any>(await api.post(`/attendance/attendance-sessions/${monitoringSessionId}/heartbeat`));
 }

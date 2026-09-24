@@ -13,11 +13,16 @@ import { generateMyQr, getSessionStatus, verifyMyQr, heartbeat, recordEvent } fr
 import { useRegistration } from "../../hooks/useRegistration";
 import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 import { errorText } from "../../lib/errors";
+import { JitsiMeeting } from "../../components/meeting/JitsiMeeting";
+import { recordMeetingJoin } from "../../services/attendance.service";
+import { useAuth } from "../../context/AuthContext";
 
 function SessionRow({ session }: { session: any }) {
-  const [accessState, setAccessState] = useState<{ access: string; meetingUrl?: string | null; monitoringSession?: any } | null>(null);
+  const { user } = useAuth();
+  const [accessState, setAccessState] = useState<{ access: string; reason?: string; jitsiRoomName?: string | null; meetingLive?: boolean; workshopId?: string; monitoringSession?: any } | null>(null);
   const [qrState, setQrState] = useState<{ qrPayload: string; expiresIn: number; sessionId: string; passcode: string; scanUrl?: string } | null>(null);
   const [verifyToken, setVerifyToken] = useState("");
+  const [checkInComplete, setCheckInComplete] = useState(false);
   
   const fetchAccess = async () => {
     try {
@@ -55,11 +60,11 @@ function SessionRow({ session }: { session: any }) {
 
   // Polling for Meeting Going Live (while checked in but waiting for organizer)
   useEffect(() => {
-    if (session.status === "LIVE" && accessState?.access === "GRANTED" && !accessState?.meetingUrl) {
+    if (session.status === "LIVE" && accessState?.access === "GRANTED" && !accessState?.jitsiRoomName) {
       const interval = setInterval(fetchAccess, 5000);
       return () => clearInterval(interval);
     }
-  }, [session.status, accessState?.access, accessState?.meetingUrl]);
+  }, [session.status, accessState?.access, accessState?.jitsiRoomName]);
 
   // Heartbeat & Fullscreen Monitoring
   useEffect(() => {
@@ -122,8 +127,16 @@ function SessionRow({ session }: { session: any }) {
 
   const verifyQrMutation = useMutation({
     mutationFn: () => verifyMyQr(session.id, verifyToken),
-    onSuccess: () => fetchAccess(),
+    onSuccess: () => {
+      setCheckInComplete(true);
+      setVerifyToken("");
+      fetchAccess();
+    },
     onError: () => alert("Invalid or Expired Passcode!")
+  });
+
+  const joinMeetingMutation = useMutation({
+    mutationFn: () => recordMeetingJoin(session.id),
   });
 
   const getScanUrl = () => {
@@ -147,14 +160,14 @@ function SessionRow({ session }: { session: any }) {
 
         <div>
           {session.status === "SCHEDULED" && (
-            <span className="text-[#5F524B] italic">Meeting Locked (Waiting for Organizer)</span>
+            <span className="text-[#5F524B] italic">Session has not started yet.</span>
           )}
           
           {session.status === "COMPLETED" && (
             <TraceBadge variant="cream">Completed</TraceBadge>
           )}
 
-          {session.status === "LIVE" && !accessState?.meetingUrl && !qrState && accessState?.access !== "GRANTED" && (
+          {session.status === "LIVE" && !qrState && !checkInComplete && accessState?.access !== "GRANTED" && (
             <TraceButton size="sm" onClick={() => generateQrMutation.mutate()} disabled={generateQrMutation.isPending}>
               Get Attendance QR
             </TraceButton>
@@ -164,25 +177,20 @@ function SessionRow({ session }: { session: any }) {
             <p className="mt-2 text-xs text-red-600">{errorText(generateQrMutation.error)}</p>
           )}
 
-          {/* Checked in but meeting not yet live */}
-          {accessState?.access === "GRANTED" && !accessState?.meetingUrl && session.status === "LIVE" && (
+          {session.status === "LIVE" && accessState?.access === "LOCKED" && (
             <div className="flex items-center gap-2 text-xs text-[#5F524B]">
-              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
-              <span>Checked In — Waiting for organizer to start meeting</span>
+              <span className="w-2 h-2 rounded-full bg-[#BF9270] flex-shrink-0"></span>
+              <span>{accessState.reason === "MEETING_NOT_LIVE" ? "Session is live. Waiting for the organizer to start the meeting." : "Complete QR check-in to join."}</span>
             </div>
           )}
           
-          {session.status !== "COMPLETED" && session.status !== "CANCELLED" && accessState?.access === "GRANTED" && accessState?.meetingUrl && (
-            <a href={accessState.meetingUrl} target="_blank" rel="noopener noreferrer">
-              <TraceButton size="sm" icon="video_camera_front">
-                Join Virtual Session
-              </TraceButton>
-            </a>
+          {session.status === "LIVE" && accessState?.access === "GRANTED" && accessState.jitsiRoomName && (
+            <span className="text-green-700 font-semibold">Session is live</span>
           )}
         </div>
       </div>
       
-      {qrState && (!accessState || accessState.access !== "GRANTED") && (
+      {qrState && !checkInComplete && (!accessState || accessState.access !== "GRANTED") && (
         <div className="mt-2 p-3 bg-white border border-[#DFC1B0] rounded flex flex-col md:flex-row gap-6 items-center">
           <div className="flex-shrink-0 bg-white p-2 border border-[#DFC1B0] rounded shadow-sm">
             <QRCodeSVG value={getScanUrl()} size={150} level="M" />
@@ -213,6 +221,33 @@ function SessionRow({ session }: { session: any }) {
             </div>
           </div>
         </div>
+      )}
+
+      {checkInComplete && session.status === "LIVE" && accessState?.access !== "GRANTED" && (
+        <div className="mt-2 rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+          <p className="font-semibold">Attendance Recorded</p>
+          <p className="mt-1">Your check-in is saved. The meeting will appear here when the organizer starts it.</p>
+        </div>
+      )}
+
+      {session.status === "LIVE" && accessState?.access === "GRANTED" && accessState.jitsiRoomName && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-semibold text-[#1A1412]">Join Session</span>
+            {joinMeetingMutation.isError && (
+              <span className="text-xs text-red-600">Unable to start attendance timing. Please try again.</span>
+            )}
+          </div>
+          <JitsiMeeting
+            roomName={accessState.jitsiRoomName}
+            displayName={user ? `${user.firstName} ${user.lastName}`.trim() : undefined}
+            onFirstJoin={() => joinMeetingMutation.mutate()}
+          />
+        </div>
+      )}
+
+      {session.status === "COMPLETED" && (
+        <div className="text-xs font-semibold text-[#5F524B]">Session completed.</div>
       )}
       
       {accessState?.access === "GRANTED" && accessState?.monitoringSession && (

@@ -1,7 +1,7 @@
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import type { AuthUser } from "../../shared/types/http";
-import { calculateAttendancePercentage, calculateInactiveIntervals, getSessionDurationMs } from "../../shared/utils/attendance";
+import { calculateAttendancePercentage } from "../../shared/utils/attendance";
 import { sha256, randomToken } from "../../shared/utils/tokens";
 import jwt from "jsonwebtoken";
 import { recordAudit } from "../audit/audit.service";
@@ -30,33 +30,18 @@ export async function summarize(userId: string, workshopId: string) {
     const record = records.find(r => r.sessionId === session.id);
     if (!record || record.status !== "PRESENT") continue;
 
-    // Check if it was an online monitored session
-    const monitoring = await prisma.attendanceMonitoringSession.findFirst({
-      where: { sessionId: session.id, userId, status: "COMPLETED" },
-      orderBy: { createdAt: "desc" },
-      include: { events: true }
-    });
+    if (!record.finalizedAt || record.durationSeconds == null) continue;
 
-    if (monitoring && monitoring.endedAt && session.startTime && session.endTime) {
-      try {
-        const expectedDurationMs = getSessionDurationMs(session);
-        const events = monitoring.events.map(e => ({ type: e.type, serverTime: e.serverTime }));
-        const inactiveDurationMs = calculateInactiveIntervals(events, session.startTime, session.endTime, 10);
-        
-        const effectiveDurationMs = Math.max(0, expectedDurationMs - inactiveDurationMs);
-        
-        let pct = (effectiveDurationMs / expectedDurationMs) * 100;
-        if (pct > 100) pct = 100;
-        totalPercentageAccumulated += pct;
-      } catch (err) {
-        totalPercentageAccumulated += 100;
-      }
-    } else {
-      totalPercentageAccumulated += 100; // Offline or legacy attendance gets 100%
-    }
+    const scheduledSeconds = Math.max(0, Math.round(
+      (session.endTime.getTime() - session.startTime.getTime()) / 1000,
+    ));
+    const percentage = scheduledSeconds > 0
+      ? Math.min(100, (record.durationSeconds / scheduledSeconds) * 100)
+      : 0;
+    totalPercentageAccumulated += percentage;
   }
 
-  const attended = records.filter(r => r.status === "PRESENT").length;
+  const attended = records.filter(r => r.status === "PRESENT" && r.finalizedAt && (r.durationSeconds ?? 0) > 0).length;
   const absent = records.filter(r => r.status === "ABSENT").length;
   const overallPercentage = total === 0 ? 0 : totalPercentageAccumulated / total;
 
@@ -97,17 +82,9 @@ export async function sessionAttendance(actor: AuthUser, sessionId: string) {
     orderBy: { user: { firstName: "asc" } },
   });
 
-  const now = new Date();
-  
   return records.map((record) => {
-    let durationMinutes = 0;
+    let durationMinutes = record.durationSeconds == null ? 0 : Math.round(record.durationSeconds / 60);
     const monitoring = record.attendanceMonitoringSession;
-    
-    if (record.status === "PRESENT" && record.recordedAt) {
-      const end = monitoring?.endedAt ?? now;
-      durationMinutes = Math.round((end.getTime() - record.recordedAt.getTime()) / 60000);
-      if (durationMinutes < 0) durationMinutes = 0;
-    }
 
     return {
       id: record.id,
@@ -118,6 +95,8 @@ export async function sessionAttendance(actor: AuthUser, sessionId: string) {
       user: record.user,
       registration: record.registration,
       checkInAt: record.recordedAt,
+      joinedAt: record.joinedAt,
+      finalizedAt: record.finalizedAt,
       durationMinutes,
       monitoringStatus: monitoring?.status || null
     };

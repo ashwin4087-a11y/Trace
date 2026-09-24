@@ -118,7 +118,7 @@ export async function getWorkshop(user: AuthUser | undefined, id: string) {
   return {
     ...workshop,
     meetingUrl: null,
-    sessions: workshop.sessions.map((session) => ({ ...session, meetingUrl: null })),
+    sessions: workshop.sessions.map((session) => ({ ...session, meetingUrl: null, jitsiRoomName: null })),
   };
 }
 

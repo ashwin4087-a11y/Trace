@@ -29,7 +29,6 @@ export function OrganizerSessionsPage() {
   const [start, setStart] = useState("");
   const [activeToken, setActiveToken] = useState<{token: string, sessionId: string} | null>(null);
   const [mode, setMode] = useState<"ONLINE" | "OFFLINE" | "HYBRID">("ONLINE");
-  const [meetingUrl, setMeetingUrl] = useState("");
   const [venue, setVenue] = useState("");
 
   const create = useMutation({
@@ -41,8 +40,7 @@ export function OrganizerSessionsPage() {
         startTime: new Date(start).toISOString(),
         endTime: new Date(new Date(start).getTime() + 60 * 60 * 1000).toISOString(),
         mode,
-        meetingProvider: mode === "ONLINE" || mode === "HYBRID" ? "GOOGLE_MEET" : undefined,
-        meetingUrl: mode === "ONLINE" || mode === "HYBRID" ? meetingUrl : undefined,
+        meetingProvider: mode === "ONLINE" || mode === "HYBRID" ? "JITSI" : undefined,
         venue: mode === "OFFLINE" || mode === "HYBRID" ? venue : undefined,
       }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["sessions", workshopId] }),
@@ -183,7 +181,7 @@ export function OrganizerSessionsPage() {
                                 await meetingEnd(session.id);
                                 client.invalidateQueries({ queryKey: ["sessions", workshopId] });
                               }}>
-                                Hide Meeting Link
+                                End Meeting
                               </TraceButton>
                             )}
                             
@@ -245,22 +243,11 @@ export function OrganizerSessionsPage() {
                 onChange={(e) => setMode(e.target.value as any)}
                 className="w-full bg-[#FAFAFA] border border-[#DFC1B0] rounded-lg px-4 py-2.5 text-sm font-sans text-[#1A1412] focus:outline-none focus:border-[#BF9270] focus:ring-1 focus:ring-[#BF9270]"
               >
-                <option value="ONLINE">Online (Google Meet)</option>
+                <option value="ONLINE">Online (Jitsi)</option>
                 <option value="OFFLINE">Offline (In-Person)</option>
                 <option value="HYBRID">Hybrid (Both)</option>
               </select>
             </div>
-
-            {(mode === "ONLINE" || mode === "HYBRID") && (
-              <Input
-                label="Google Meet URL"
-                type="url"
-                placeholder="https://meet.google.com/xxx-xxxx-xxx"
-                value={meetingUrl}
-                onChange={(event) => setMeetingUrl(event.target.value)}
-                required
-              />
-            )}
 
             {(mode === "OFFLINE" || mode === "HYBRID") && (
               <Input

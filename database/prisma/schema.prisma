@@ -639,6 +639,7 @@ model WorkshopSession {
   mode            DeliveryMode?
   meetingProvider String?
   meetingLive     Boolean       @default(false)
+  jitsiRoomName   String?       @unique
 
   workshop                     Workshop                      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   trainer                      User?                         @relation("SessionTrainer", fields: [trainerId], references: [id])
@@ -880,6 +881,9 @@ model Attendance {
   note                        String?
   recordedById                String?
   recordedAt                  DateTime                     @default(now())
+  joinedAt                    DateTime?
+  finalizedAt                 DateTime?
+  durationSeconds             Int?
   session                     WorkshopSession              @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   registration                Registration                 @relation(fields: [registrationId], references: [id], onDelete: Cascade)
   user                        User                         @relation("AttendanceSubject", fields: [userId], references: [id], onDelete: Cascade)

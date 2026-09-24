@@ -638,6 +638,7 @@ model WorkshopSession {
   sessionNumber   Int?
   mode            DeliveryMode?
   meetingProvider String?
+  meetingLive     Boolean       @default(false)
 
   workshop                     Workshop                      @relation(fields: [workshopId], references: [id], onDelete: Cascade)
   trainer                      User?                         @relation("SessionTrainer", fields: [trainerId], references: [id])

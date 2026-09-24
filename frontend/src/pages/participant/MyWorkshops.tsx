@@ -59,7 +59,7 @@ export function MyWorkshopsPage() {
                 </span>
                 <Link to={`/participant/workshops/${item.workshopId}/learn`}>
                   <TraceButton size="sm" icon="play_circle">
-                    Enter Workspace
+                    Open Workshop →
                   </TraceButton>
                 </Link>
               </div>

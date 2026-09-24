@@ -6,7 +6,8 @@ export const me = asyncHandler(async (req, res) => {
 });
 
 export const organizer = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await analytics.organizerAnalytics(req.user!.id) });
+  const workshopId = typeof req.query.workshopId === "string" ? req.query.workshopId : undefined;
+  res.json({ success: true, data: await analytics.organizerAnalytics(req.user!.id, workshopId) });
 });
 
 export const platform = asyncHandler(async (_req, res) => {

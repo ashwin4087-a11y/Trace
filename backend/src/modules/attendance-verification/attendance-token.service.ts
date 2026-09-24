@@ -85,13 +85,18 @@ export async function redeemToken(rawToken: string, expectedWorkshopSessionId?: 
     },
   });
 
-  const invalid = () => {
+  if (!token || !tokenHashMatches(token.tokenHash, rawToken)) {
     throw new ApiError(400, "ATTENDANCE_TOKEN_INVALID", "Attendance token is invalid or unavailable");
-  };
-  if (!token || !tokenHashMatches(token.tokenHash, rawToken)) invalid();
-  if (expectedWorkshopSessionId && token.workshopSessionId !== expectedWorkshopSessionId) invalid();
-  if (token.revokedAt || token.redeemedAt || token.registration.status !== "CONFIRMED" || token.workshopSession.status === "CANCELLED") invalid();
-  if (!validateWindow(new Date(), token.workshopSession, token.workshopSession.workshop).isOpen) invalid();
+  }
+  if (expectedWorkshopSessionId && token.workshopSessionId !== expectedWorkshopSessionId) {
+    throw new ApiError(400, "ATTENDANCE_TOKEN_INVALID", "Attendance token is invalid or unavailable");
+  }
+  if (token.revokedAt || token.redeemedAt || token.registration.status !== "CONFIRMED" || token.workshopSession.status === "CANCELLED") {
+    throw new ApiError(400, "ATTENDANCE_TOKEN_INVALID", "Attendance token is invalid or unavailable");
+  }
+  if (!validateWindow(new Date(), token.workshopSession, token.workshopSession.workshop).isOpen) {
+    throw new ApiError(400, "ATTENDANCE_TOKEN_INVALID", "Attendance token is invalid or unavailable");
+  }
 
   const redeemed = await prisma.attendanceAccessToken.update({
     where: { id: token.id },

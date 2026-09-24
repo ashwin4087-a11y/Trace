@@ -9,13 +9,14 @@ describe("meeting link access", () => {
     expect(canSeeMeetingLinks({ role: "ADMIN", userId: "admin", organizerId })).toBe(true);
   });
 
-  it("shows links only to a confirmed participant", () => {
+  it("shows links only to a confirmed participant who has checked in", () => {
     expect(
       canSeeMeetingLinks({
         role: "PARTICIPANT",
         userId: "learner",
         organizerId,
         registrationStatus: "CONFIRMED",
+        attendanceStatus: "PRESENT",
       }),
     ).toBe(true);
     expect(
@@ -23,7 +24,17 @@ describe("meeting link access", () => {
         role: "PARTICIPANT",
         userId: "learner",
         organizerId,
+        registrationStatus: "CONFIRMED",
+        attendanceStatus: null,
+      }),
+    ).toBe(false);
+    expect(
+      canSeeMeetingLinks({
+        role: "PARTICIPANT",
+        userId: "learner",
+        organizerId,
         registrationStatus: "WAITLISTED",
+        attendanceStatus: "PRESENT",
       }),
     ).toBe(false);
   });

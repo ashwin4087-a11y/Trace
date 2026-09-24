@@ -9,7 +9,7 @@ const items = [
   { to: "/participant", label: "Overview" },
   { to: "/participant/profile", label: "Profile" },
   { to: "/participant/academic-profile", label: "Academic Profile" },
-  { to: "/participant/workshops", label: "My Workshops" },
+  { to: "/participant/workshops", label: "Learn" },
   { to: "/participant/sessions", label: "Sessions" },
   { to: "/participant/attendance", label: "Attendance" },
   { to: "/participant/assessments", label: "Assessments" },

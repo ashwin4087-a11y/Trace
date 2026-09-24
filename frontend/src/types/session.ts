@@ -11,4 +11,6 @@ export type WorkshopSession = {
   venue?: string | null;
   status: string;
   mode?: string;
+  sessionNumber?: number;
+  meetingLive?: boolean;
 };

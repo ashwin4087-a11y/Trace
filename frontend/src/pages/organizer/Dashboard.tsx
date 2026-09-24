@@ -7,7 +7,7 @@ import { TraceButton } from "../../components/trace/TraceButton";
 import { organizerAnalytics } from "../../services/analytics.service";
 
 export function OrganizerDashboardPage() {
-  const query = useQuery({ queryKey: ["analytics", "organizer"], queryFn: organizerAnalytics });
+  const query = useQuery({ queryKey: ["analytics", "organizer"], queryFn: () => organizerAnalytics() });
   const data = query.data;
 
   return (

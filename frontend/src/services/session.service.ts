@@ -14,5 +14,16 @@ export async function updateSession(sessionId: string, body: Record<string, unkn
   return unwrap<WorkshopSession>(await api.patch(`/sessions/${sessionId}`, body));
 }
 export async function getSessionAccess(sessionId: string) {
-  return unwrap<{ access: string; meetingUrl?: string; monitoringSession?: any }>(await api.get(`/sessions/${sessionId}/access`));
+  return unwrap<{ access: string; meetingUrl?: string | null; meetingLive?: boolean; workshopId?: string; monitoringSession?: any }>(
+    await api.get(`/sessions/${sessionId}/access`)
+  );
+}
+export async function meetingStart(sessionId: string) {
+  return unwrap<{ id: string; meetingLive: boolean }>(await api.post(`/sessions/${sessionId}/meeting/start`));
+}
+export async function meetingEnd(sessionId: string) {
+  return unwrap<{ id: string; meetingLive: boolean }>(await api.post(`/sessions/${sessionId}/meeting/end`));
+}
+export async function endSession(sessionId: string) {
+  return unwrap<{ success: boolean; sessionId: string; status: string }>(await api.post(`/sessions/${sessionId}/end`));
 }

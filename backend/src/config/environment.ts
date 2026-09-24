@@ -33,6 +33,11 @@ export const env = {
     autoIssue: process.env.ATTENDANCE_AUTO_ISSUE === "true",
     tokenRetentionDays: Number(process.env.ATTENDANCE_TOKEN_RETENTION_DAYS ?? 30),
     eventRetentionDays: Number(process.env.ATTENDANCE_EVENT_RETENTION_DAYS ?? 180),
+    fullscreenGraceMs: Number(process.env.ATTENDANCE_FULLSCREEN_GRACE_SEC ?? 10) * 1000,
+    focusGraceMs: Number(process.env.ATTENDANCE_FOCUS_GRACE_SEC ?? 10) * 1000,
+    heartbeatIntervalMs: Number(process.env.ATTENDANCE_HEARTBEAT_INTERVAL_SEC ?? 30) * 1000,
+    heartbeatGapMultiplier: Number(process.env.ATTENDANCE_HEARTBEAT_GAP_MULTIPLIER ?? 3),
+    defaultThresholdPercent: Number(process.env.ATTENDANCE_DEFAULT_THRESHOLD_PERCENT ?? 90),
   },
   email: {
     host: process.env.EMAIL_HOST || "",

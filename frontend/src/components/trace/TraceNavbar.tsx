@@ -18,11 +18,11 @@ export function TraceNavbar() {
   const unreadCount = notifications?.filter((n) => !n.readAt).length ?? 0;
 
   const navItems = [
-    { path: "/workshops", label: language === "TA" ? "கண்டுபிடி" : "Discover" },
-    { path: "/participant", label: language === "TA" ? "கற்றல்" : "Learn", exact: true },
-    { path: "/participant/communities", label: language === "TA" ? "சமூகங்கள்" : "Communities" },
-    { path: "/participant/learning-paths", label: language === "TA" ? "கற்றல் பாதைகள்" : "Learning Paths" },
-    { path: "/participant/skills", label: language === "TA" ? "திறன் கடவுச்சீட்டு" : "Skill Passport" },
+    { path: "/workshops", label: language === "TA" ? "கண்டுபிடி" : "Discover", exact: false },
+    { path: "/participant/workshops", label: language === "TA" ? "கற்றல்" : "Learn", exact: false },
+    { path: "/participant/communities", label: language === "TA" ? "சமூகங்கள்" : "Communities", exact: false },
+    { path: "/participant/learning-paths", label: language === "TA" ? "கற்றல் பாதைகள்" : "Learning Paths", exact: false },
+    { path: "/participant/skills", label: language === "TA" ? "திறன் கடவுச்சீட்டு" : "Skill Passport", exact: false },
   ];
 
   const isActive = (path: string, exact?: boolean) => {

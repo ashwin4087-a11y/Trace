@@ -24,3 +24,16 @@ export const remove = asyncHandler(async (req, res) => {
 export const qr = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await sessions.issueQrToken(req.user!, req.params.id) });
 });
+
+export const meetingStart = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await sessions.makeMeetingLive(req.user!, req.params.id) });
+});
+
+export const meetingEnd = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await sessions.endMeeting(req.user!, req.params.id) });
+});
+
+export const end = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await sessions.endSession(req.user!, req.params.id) });
+});
+

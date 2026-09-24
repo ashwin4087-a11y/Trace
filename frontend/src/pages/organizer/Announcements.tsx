@@ -1,7 +1,9 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { OrganizerLayout } from "../../components/layout/OrganizerLayout";
 import { useWorkshopList } from "../../hooks/useWorkshop";
 import { api } from "../../services/api";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 const TERRACOTTA = "#BF9270";
 const INK = "#1A1412";
@@ -37,8 +39,8 @@ const textareaStyle: React.CSSProperties = {
 };
 
 export function AnnouncementsPage() {
-  const workshops = useWorkshopList();
-  const workshopId = workshops.data?.[0]?.id ?? "";
+  const workshops = useWorkshopList({ mine: 1 });
+  const { workshopId, setWorkshopId } = useWorkshopContext(workshops.data);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [sent, setSent] = useState(false);
@@ -59,6 +61,14 @@ export function AnnouncementsPage() {
 
   return (
     <OrganizerLayout title="Announcements">
+      <div className="mb-6 max-w-[800px] mx-auto">
+        <WorkshopSelector 
+          workshops={workshops.data} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={workshops.isLoading} 
+        />
+      </div>
       <div
         style={{
           borderBottom: `1px solid ${BORDER}`,

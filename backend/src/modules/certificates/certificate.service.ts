@@ -96,9 +96,12 @@ export async function generateForParticipant(actor: AuthUser, workshopId: string
   return certificate;
 }
 
-export async function listMine(userId: string) {
+export async function listMine(userId: string, workshopId?: string) {
   return prisma.certificate.findMany({
-    where: { userId },
+    where: { 
+      userId,
+      ...(workshopId ? { workshopId } : {})
+    },
     include: { workshop: { select: { id: true, title: true } } },
     orderBy: { issuedAt: "desc" },
   });

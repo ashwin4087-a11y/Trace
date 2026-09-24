@@ -35,8 +35,14 @@ export async function participantAnalytics(userId: string) {
   };
 }
 
-export async function organizerAnalytics(organizerId: string) {
-  const workshops = await prisma.workshop.findMany({ where: { organizerId }, select: { id: true } });
+export async function organizerAnalytics(organizerId: string, workshopId?: string) {
+  const workshops = await prisma.workshop.findMany({ 
+    where: { 
+      organizerId,
+      ...(workshopId ? { id: workshopId } : {})
+    }, 
+    select: { id: true } 
+  });
   const ids = workshops.map((item) => item.id);
   const [registrations, certificates, submissions] = await Promise.all([
     prisma.registration.count({ where: { workshopId: { in: ids }, status: "CONFIRMED" } }),

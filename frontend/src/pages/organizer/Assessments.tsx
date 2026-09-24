@@ -5,10 +5,12 @@ import { Input } from "../../components/common/Input";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
 import { createAssessment } from "../../services/assessment.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 export function OrganizerAssessmentsPage() {
-  const workshops = useWorkshopList();
-  const workshopId = workshops.data?.[0]?.id ?? "";
+  const workshops = useWorkshopList({ mine: 1 });
+  const { workshopId, setWorkshopId } = useWorkshopContext(workshops.data);
   const [title, setTitle] = useState("Module Check-in Quiz");
   const [prompt, setPrompt] = useState("Which command lists files in a directory?");
   const [opt1, setOpt1] = useState("ls");
@@ -19,6 +21,12 @@ export function OrganizerAssessmentsPage() {
   return (
     <OrganizerLayout title="Faculty Assessment Builder">
       <div className="max-w-2xl mx-auto flex flex-col gap-6">
+        <WorkshopSelector 
+          workshops={workshops.data} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={workshops.isLoading} 
+        />
         <form
           className="bg-[#FFFFFF] border border-[#DFC1B0] rounded-xl p-8 shadow-xs flex flex-col gap-5"
           onSubmit={async (event) => {

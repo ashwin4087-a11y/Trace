@@ -63,3 +63,6 @@ sessionRouter.post(
 sessionRouter.patch("/:id", requireRoles("ORGANIZER", "ADMIN"), requirePermission("workshop.create"), validate(updateSchema), controller.update);
 sessionRouter.delete("/:id", requireRoles("ORGANIZER", "ADMIN"), requirePermission("workshop.create"), controller.remove);
 sessionRouter.post("/:id/qr", requireRoles("ORGANIZER", "ADMIN"), requirePermission("attendance.write"), controller.qr);
+sessionRouter.post("/:id/meeting/start", requireRoles("ORGANIZER", "ADMIN"), requirePermission("attendance.write"), controller.meetingStart);
+sessionRouter.post("/:id/meeting/end", requireRoles("ORGANIZER", "ADMIN"), requirePermission("attendance.write"), controller.meetingEnd);
+sessionRouter.post("/:id/end", requireRoles("ORGANIZER", "ADMIN"), requirePermission("attendance.write"), controller.end);

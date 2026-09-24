@@ -7,16 +7,19 @@ import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { useRegistration } from "../../hooks/useRegistration";
 import { listAssessments, submitAssessment } from "../../services/assessment.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 export function AssessmentsPage() {
   const registrations = useRegistration();
-  const confirmedReg = registrations.data?.find((item) => item.status === "CONFIRMED") || registrations.data?.[0];
-  const workshopId = confirmedReg?.workshopId;
+  // Map registrations to a format the selector understands
+  const availableWorkshops = registrations.data?.map(reg => reg.workshop!).filter(Boolean) ?? [];
+  const { workshopId, setWorkshopId } = useWorkshopContext(availableWorkshops as any);
 
   const query = useQuery({
     queryKey: ["assessments", workshopId],
     queryFn: () => listAssessments(workshopId!),
-    enabled: Boolean(workshopId),
+    enabled: !!workshopId,
   });
 
   const [result, setResult] = useState("");
@@ -24,6 +27,14 @@ export function AssessmentsPage() {
 
   return (
     <ParticipantLayout title="Course Assessments & Quizzes">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={availableWorkshops as any} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={registrations.isLoading} 
+        />
+      </div>
       <div className="flex flex-col gap-6">
         <p className="font-sans text-xs text-[#5F524B]">
           Complete knowledge evaluations and quizzes assigned to your enrolled workshops to validate your mastery.

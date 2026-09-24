@@ -5,16 +5,18 @@ import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
 import { workshopRegistrations } from "../../services/registration.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 export function ParticipantsPage() {
-  const workshops = useWorkshopList();
-  const workshopId = workshops.data?.[0]?.id;
+  const workshops = useWorkshopList({ mine: 1 });
+  const { workshopId, setWorkshopId } = useWorkshopContext(workshops.data);
   const query = useQuery({
     queryKey: ["registrations", workshopId],
     queryFn: () => workshopRegistrations(workshopId!),
-    enabled: Boolean(workshopId),
+    enabled: !!workshopId,
   });
-  const workshop = workshops.data?.[0];
+  const workshop = workshops.data?.find((w) => w.id === workshopId);
 
   function exportParticipants() {
     if (!workshop || !query.data?.length) return;
@@ -40,6 +42,14 @@ export function ParticipantsPage() {
 
   return (
     <OrganizerLayout title="Participant Roster & Enrolments">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={workshops.data} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={workshops.isLoading} 
+        />
+      </div>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between border-b border-[#DFC1B0]/60 pb-3">
           <div>

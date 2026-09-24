@@ -9,20 +9,33 @@ import { useCertificate } from "../../hooks/useCertificate";
 import { useRegistration } from "../../hooks/useRegistration";
 import { errorText } from "../../lib/errors";
 import { generateCertificate } from "../../services/certificate.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 export function CertificatesPage() {
-  const certificates = useCertificate();
   const registrations = useRegistration();
+  // Map registrations to a format the selector understands
+  const availableWorkshops = registrations.data?.map(reg => reg.workshop!).filter(Boolean) ?? [];
+  const { workshopId, setWorkshopId } = useWorkshopContext(availableWorkshops as any);
+  
+  const certificates = useCertificate(workshopId);
   const client = useQueryClient();
-  const workshopId = registrations.data?.find((item) => item.status === "CONFIRMED")?.workshopId;
 
   const mutation = useMutation({
     mutationFn: () => generateCertificate(workshopId!),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["certificates"] }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["certificates", workshopId] }),
   });
 
   return (
     <ParticipantLayout title="Cryptographic Certificates & Credentials">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={availableWorkshops as any} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={registrations.isLoading} 
+        />
+      </div>
       <div className="flex flex-col gap-8">
         <div className="bg-[#FFFFFF] border border-[#DFC1B0] rounded-xl p-6 shadow-xs flex flex-col gap-4">
           <div className="border-b border-[#DFC1B0]/60 pb-3 flex items-center justify-between">

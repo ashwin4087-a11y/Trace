@@ -12,6 +12,9 @@ import {
 import { OrganizerLayout } from "../../components/layout/OrganizerLayout";
 import { Loader } from "../../components/common/Loader";
 import { organizerAnalytics } from "../../services/analytics.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
+import { useWorkshopList } from "../../hooks/useWorkshop";
 
 const TERRACOTTA = "#BF9270";
 const TERRACOTTA_DARK = "#A87558";
@@ -97,9 +100,12 @@ function TraceTooltip({ active, payload, label }: any) {
 }
 
 export function OrganizerAnalyticsPage() {
+  const workshops = useWorkshopList({ mine: 1 });
+  const { workshopId, setWorkshopId } = useWorkshopContext(workshops.data);
   const query = useQuery({
-    queryKey: ["analytics", "organizer"],
-    queryFn: organizerAnalytics,
+    queryKey: ["analytics", workshopId],
+    queryFn: () => organizerAnalytics(workshopId),
+    enabled: !!workshopId,
   });
 
   const data = query.data
@@ -112,6 +118,14 @@ export function OrganizerAnalyticsPage() {
 
   return (
     <OrganizerLayout title="Analytics">
+      <div className="mb-6 max-w-[800px] mx-auto">
+        <WorkshopSelector 
+          workshops={workshops.data} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={workshops.isLoading} 
+        />
+      </div>
       <div
         style={{
           borderBottom: `1px solid ${BORDER}`,

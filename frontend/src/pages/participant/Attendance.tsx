@@ -4,14 +4,26 @@ import { Loader } from "../../components/common/Loader";
 import { TraceBadge } from "../../components/trace/TraceBadge";
 import { useAttendance } from "../../hooks/useAttendance";
 import { useRegistration } from "../../hooks/useRegistration";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 export function AttendancePage() {
   const registrations = useRegistration();
-  const workshopId = registrations.data?.[0]?.workshopId;
+  // Map registrations to a format the selector understands
+  const availableWorkshops = registrations.data?.map(reg => reg.workshop!).filter(Boolean) ?? [];
+  const { workshopId, setWorkshopId } = useWorkshopContext(availableWorkshops as any);
   const { history, percent } = useAttendance(workshopId);
 
   return (
     <ParticipantLayout title="Attendance Telemetry">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={availableWorkshops as any} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={registrations.isLoading} 
+        />
+      </div>
       <div className="flex flex-col gap-8">
         <p className="font-sans text-xs text-[#5F524B]">
           Server-validated attendance tracking. A minimum of 90% attendance across mandatory workshop sessions is required to unlock your verifiable certificate.

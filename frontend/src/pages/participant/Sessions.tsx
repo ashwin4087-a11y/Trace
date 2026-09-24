@@ -102,7 +102,7 @@ export function SessionsPage() {
             </div>
 
             <p className="font-sans text-xs text-[#5F524B] leading-relaxed">
-              Enter the numeric or cryptographic session code presented by your instructor during live lecture to log your attendance proof.
+              Open the companion session page and complete verification there. Attendance is recorded only after that verification succeeds.
             </p>
 
             <Input

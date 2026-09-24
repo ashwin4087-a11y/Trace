@@ -1,7 +1,7 @@
 import { prisma } from "../../config/database";
 import { ApiError } from "../../shared/errors/api-error";
 import type { AuthUser } from "../../shared/types/http";
-import { calculateAttendancePercentage, calculateInactiveIntervals } from "../../shared/utils/attendance";
+import { calculateAttendancePercentage, calculateInactiveIntervals, getSessionDurationMs } from "../../shared/utils/attendance";
 import { sha256, randomToken } from "../../shared/utils/tokens";
 import jwt from "jsonwebtoken";
 import { recordAudit } from "../audit/audit.service";
@@ -38,22 +38,17 @@ export async function summarize(userId: string, workshopId: string) {
     });
 
     if (monitoring && monitoring.endedAt && session.startTime && session.endTime) {
-      // Calculate duration percentage
-      const sessionStart = session.startTime;
-      const sessionEnd = session.endTime;
-      
-      const expectedDurationMs = sessionEnd.getTime() - sessionStart.getTime();
-      
-      if (expectedDurationMs > 0) {
+      try {
+        const expectedDurationMs = getSessionDurationMs(session);
         const events = monitoring.events.map(e => ({ type: e.type, serverTime: e.serverTime }));
-        const inactiveDurationMs = calculateInactiveIntervals(events, sessionStart, sessionEnd, 10);
+        const inactiveDurationMs = calculateInactiveIntervals(events, session.startTime, session.endTime, 10);
         
         const effectiveDurationMs = Math.max(0, expectedDurationMs - inactiveDurationMs);
         
         let pct = (effectiveDurationMs / expectedDurationMs) * 100;
         if (pct > 100) pct = 100;
         totalPercentageAccumulated += pct;
-      } else {
+      } catch (err) {
         totalPercentageAccumulated += 100;
       }
     } else {
@@ -92,13 +87,40 @@ export async function sessionAttendance(actor: AuthUser, sessionId: string) {
   if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
   await assertCanManageWorkshop(actor, session.workshopId);
 
-  return prisma.attendance.findMany({
+  const records = await prisma.attendance.findMany({
     where: { sessionId },
     include: {
       user: { select: { id: true, firstName: true, lastName: true, email: true } },
       registration: { select: { id: true, status: true } },
+      attendanceMonitoringSession: { select: { status: true, endedAt: true } }
     },
     orderBy: { user: { firstName: "asc" } },
+  });
+
+  const now = new Date();
+  
+  return records.map((record) => {
+    let durationMinutes = 0;
+    const monitoring = record.attendanceMonitoringSession;
+    
+    if (record.status === "PRESENT" && record.recordedAt) {
+      const end = monitoring?.endedAt ?? now;
+      durationMinutes = Math.round((end.getTime() - record.recordedAt.getTime()) / 60000);
+      if (durationMinutes < 0) durationMinutes = 0;
+    }
+
+    return {
+      id: record.id,
+      sessionId: record.sessionId,
+      registrationId: record.registrationId,
+      status: record.status,
+      method: record.method,
+      user: record.user,
+      registration: record.registration,
+      checkInAt: record.recordedAt,
+      durationMinutes,
+      monitoringStatus: monitoring?.status || null
+    };
   });
 }
 
@@ -281,46 +303,11 @@ export async function closeQr(actor: AuthUser, sessionId: string) {
 }
 
 export async function checkInWithQr(userId: string, token: string) {
-  const secret = process.env.JWT_SECRET || "fallback";
-  let payload: any;
-  try {
-    payload = jwt.verify(token, secret);
-  } catch (err) {
-    throw new ApiError(400, "INVALID_QR", "QR code is expired or invalid");
-  }
-
-  const { sessionId } = payload;
-  const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
-  if (!session || !session.qrTokenHash) {
-    throw new ApiError(400, "INVALID_QR", "Attendance QR is not currently active for this session");
-  }
-
-  const registration = await prisma.registration.findUnique({
-    where: { workshopId_userId: { workshopId: session.workshopId, userId } },
-  });
-  if (!registration || registration.status !== "CONFIRMED") {
-    throw new ApiError(403, "NOT_REGISTERED", "Only confirmed participants can use QR check-in");
-  }
-  
-  const attendance = await prisma.attendance.upsert({
-    where: { sessionId_registrationId: { sessionId: session.id, registrationId: registration.id } },
-    update: { status: "PRESENT", method: "QR", recordedAt: new Date() },
-    create: { sessionId: session.id, registrationId: registration.id, userId, status: "PRESENT", method: "QR" },
-  });
-
-  await emitWorkshopDomainEvent({
-    type: "ATTENDANCE_UPDATED",
-    attendanceId: attendance.id,
-    sessionId: session.id,
-    workshopId: session.workshopId,
-    registrationId: registration.id,
-    userId,
-    status: attendance.status,
-    updatedAt: attendance.recordedAt,
-    source: attendance.method,
-  });
-
-  return attendance;
+  throw new ApiError(
+    410,
+    "COMPANION_VERIFICATION_REQUIRED",
+    "Attendance must be verified from the companion session page before it can be recorded",
+  );
 }
 
 export async function historyForWorkshop(workshopId: string) {
@@ -335,9 +322,21 @@ export async function historyForWorkshop(workshopId: string) {
   });
 }
 
-export async function myHistory(userId: string) {
+export async function myHistory(userId: string, workshopId?: string) {
+  if (workshopId) {
+    const reg = await prisma.registration.findUnique({
+      where: { workshopId_userId: { workshopId, userId } },
+    });
+    if (!reg) {
+      throw new ApiError(403, "FORBIDDEN", "You are not registered for this workshop");
+    }
+  }
+
   return prisma.attendance.findMany({
-    where: { userId },
+    where: { 
+      userId,
+      ...(workshopId ? { session: { workshopId } } : {})
+    },
     include: { session: { include: { workshop: { select: { id: true, title: true } } } } },
     orderBy: { recordedAt: "desc" },
   });

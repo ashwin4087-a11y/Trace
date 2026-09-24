@@ -74,7 +74,6 @@ export function AppRoutes() {
           <Route path="/participant/communities" element={<CommunitiesPage />} />
           <Route path="/participant/learning-paths" element={<LearningPathsPage />} />
           <Route path="/participant/skills" element={<SkillsPage />} />
-          <Route path="/scan" element={<ScanVerifyPage />} />
         </Route>
         <Route element={<RoleRoute allow={["ORGANIZER"]} />}>
           <Route path="/organizer" element={<OrganizerDashboardPage />} />
@@ -98,6 +97,8 @@ export function AppRoutes() {
           <Route path="/admin/audit-logs" element={<AuditLogsPage />} />
           <Route path="/admin/settings" element={<SettingsPage />} />
         </Route>
+        {/* Scan route accessible by all authenticated users */}
+        <Route path="/scan" element={<ScanVerifyPage />} />
       </Route>
     </Routes>
   );

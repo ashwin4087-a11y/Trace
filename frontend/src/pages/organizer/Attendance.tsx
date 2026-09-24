@@ -6,29 +6,33 @@ import { Loader } from "../../components/common/Loader";
 import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
-import { markAttendance, workshopAttendance } from "../../services/attendance.service";
+import { markAttendance, sessionAttendance } from "../../services/attendance.service";
 import { listSessions, updateSession } from "../../services/session.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 export function OrganizerAttendancePage() {
-  const workshops = useWorkshopList();
-  const workshopId = workshops.data?.[0]?.id ?? "";
+  const workshops = useWorkshopList({ mine: 1 });
+  const { workshopId, setWorkshopId } = useWorkshopContext(workshops.data);
   const client = useQueryClient();
 
   const sessions = useQuery({
     queryKey: ["sessions", workshopId],
     queryFn: () => listSessions(workshopId),
-    enabled: Boolean(workshopId),
-  });
-
-  const history = useQuery({
-    queryKey: ["attendance", workshopId],
-    queryFn: () => workshopAttendance(workshopId),
-    enabled: Boolean(workshopId),
+    enabled: !!workshopId,
   });
 
   const [selectedSessionId, setSelectedSessionId] = useState("");
-  const sessionId = selectedSessionId || (sessions.data?.[0]?.id ?? "");
+  const validSessionIds = new Set(sessions.data?.map(s => s.id));
+  const sessionId = (validSessionIds.has(selectedSessionId) ? selectedSessionId : sessions.data?.[0]?.id) ?? "";
   
+  const liveAttendance = useQuery({
+    queryKey: ["attendance", "live", sessionId],
+    queryFn: () => sessionAttendance(sessionId),
+    enabled: !!sessionId,
+    refetchInterval: 30000 // refresh every 30s for live duration
+  });
+
   const selectedSession = sessions.data?.find((s) => s.id === sessionId);
 
   const [userId, setUserId] = useState("");
@@ -36,11 +40,22 @@ export function OrganizerAttendancePage() {
 
   const toggleSessionStatus = useMutation({
     mutationFn: (newStatus: "LIVE" | "COMPLETED") => updateSession(sessionId, { status: newStatus }),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["sessions", workshopId] }),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+      client.invalidateQueries({ queryKey: ["attendance", "live", sessionId] });
+    }
   });
 
   return (
     <OrganizerLayout title="Faculty Attendance Management">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={workshops.data} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={workshops.isLoading} 
+        />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Manual Attendance Marking */}
         <div className="lg:col-span-5 flex flex-col gap-6">
@@ -96,7 +111,7 @@ export function OrganizerAttendancePage() {
               await markAttendance({ sessionId, userId, status: "PRESENT" });
               setMessage("Participant attendance recorded successfully!");
               setUserId("");
-              await history.refetch();
+              await liveAttendance.refetch();
             }}
           >
             <div className="border-b border-[#DFC1B0]/60 pb-3">
@@ -134,40 +149,61 @@ export function OrganizerAttendancePage() {
             <div className="border-b border-[#DFC1B0]/60 pb-3 flex items-center justify-between">
               <div>
                 <span className="font-sans text-xs font-bold uppercase tracking-wider text-[#BF9270]">
-                  Session Audit
+                  Live Monitoring
                 </span>
                 <h3 className="font-serif text-xl font-semibold text-[#1A1412] mt-0.5">
-                  Logged Attendance Records
+                  ATTENDANCE — {selectedSession?.status}
                 </h3>
               </div>
-              <TraceBadge variant="cream">{history.data?.length ?? 0} Records</TraceBadge>
+              <div className="flex gap-4 text-sm font-semibold">
+                <span className="text-green-700">{liveAttendance.data?.filter(r => r.status === "PRESENT").length || 0} Present</span>
+                <span className="text-[#BF9270]">{liveAttendance.data?.filter(r => r.status === "EXCUSED").length || 0} Excused</span>
+                <span className="text-red-700">{liveAttendance.data?.filter(r => r.status === "ABSENT").length || 0} Absent</span>
+              </div>
             </div>
 
-            {history.isLoading ? <Loader /> : null}
+            {liveAttendance.isLoading ? <Loader /> : null}
 
-            {history.data && history.data.length > 0 ? (
+            {liveAttendance.data && liveAttendance.data.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-left font-sans text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-[#DFC1B0]/60 text-[#5F524B] uppercase tracking-wider font-bold">
-                      <th className="py-2.5 px-3">Participant Email</th>
-                      <th className="py-2.5 px-3">Session Title</th>
-                      <th className="py-2.5 px-3">Method</th>
+                      <th className="py-2.5 px-3">Participant</th>
+                      <th className="py-2.5 px-3">Check-in</th>
+                      <th className="py-2.5 px-3">Duration</th>
                       <th className="py-2.5 px-3">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#DFC1B0]/40">
-                    {history.data.map((item) => (
+                    {liveAttendance.data.map((item) => (
                       <tr key={item.id} className="hover:bg-[#FFEDDB]/30 transition-colors">
                         <td className="py-3 px-3 font-semibold text-[#1A1412]">
-                          {item.user?.email || "Scholar"}
+                          {item.user?.firstName} {item.user?.lastName} <br />
+                          <span className="text-[#5F524B] font-normal">{item.user?.email}</span>
                         </td>
-                        <td className="py-3 px-3 text-[#5F524B]">{item.session?.title || "Session"}</td>
-                        <td className="py-3 px-3 text-[#5F524B]">{item.method}</td>
-                        <td className="py-3 px-3">
-                          <TraceBadge variant={item.status === "PRESENT" ? "terracotta" : "cream"}>
-                            {item.status}
-                          </TraceBadge>
+                        <td className="py-3 px-3 text-[#5F524B]">
+                          {item.checkInAt ? new Date(item.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "—"}
+                        </td>
+                        <td className="py-3 px-3 font-semibold text-[#1A1412]">
+                          {item.durationMinutes > 0 ? `${Math.floor(item.durationMinutes / 60)}h ${item.durationMinutes % 60}m` : "—"}
+                        </td>
+                        <td className="py-3 px-3 font-bold text-xs uppercase tracking-wider">
+                          {item.monitoringStatus === "ACTIVE" ? (
+                            <span className="flex items-center gap-1.5 text-green-700">
+                              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                              ACTIVE
+                            </span>
+                          ) : item.monitoringStatus === "COMPLETED" ? (
+                            <span className="flex items-center gap-1.5 text-[#5F524B]">
+                              <span className="w-2 h-2 rounded-full bg-gray-400"></span>
+                              COMPLETED
+                            </span>
+                          ) : (
+                            <TraceBadge variant={item.status === "PRESENT" ? "terracotta" : "cream"}>
+                              {item.status}
+                            </TraceBadge>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -175,7 +211,7 @@ export function OrganizerAttendancePage() {
                 </table>
               </div>
             ) : (
-              <p className="font-sans text-xs text-[#5F524B]">No attendance logs recorded yet.</p>
+              <p className="font-sans text-xs text-[#5F524B]">No attendance data available for this session.</p>
             )}
           </div>
         </div>

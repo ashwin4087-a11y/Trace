@@ -32,13 +32,13 @@ export const closeQr = asyncHandler(async (req, res) => {
 export const qr = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await attendance.checkInWithQr(req.user!.id, req.body.token) });
 });
-
 export const workshop = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await attendance.workshopSummary(req.user!, req.params.workshopId) });
 });
 
 export const mine = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await attendance.myHistory(req.user!.id) });
+  const workshopId = typeof req.query.workshopId === "string" ? req.query.workshopId : undefined;
+  res.json({ success: true, data: await attendance.myHistory(req.user!.id, workshopId) });
 });
 
 export const summary = asyncHandler(async (req, res) => {
@@ -57,6 +57,10 @@ import * as monitoring from "./monitoring.service";
 
 export const myQr = asyncHandler(async (req, res) => {
   res.json({ success: true, data: await monitoring.generateMyQr(req.user!, req.params.sessionId) });
+});
+
+export const sessionStatus = asyncHandler(async (req, res) => {
+  res.json({ success: true, data: await monitoring.getSessionStatus(req.user!, req.params.sessionId) });
 });
 
 export const verifyQr = asyncHandler(async (req, res) => {

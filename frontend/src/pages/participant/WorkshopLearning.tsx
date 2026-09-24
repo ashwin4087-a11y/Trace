@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useState, useEffect } from "react";
 import { ParticipantLayout } from "../../components/layout/ParticipantLayout";
@@ -8,11 +8,14 @@ import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { listMaterials } from "../../services/learning.service";
 import { listSessions, getSessionAccess } from "../../services/session.service";
-import { generateMyQr, verifyMyQr, heartbeat, recordEvent } from "../../services/attendance.service";
+import { QRCodeSVG } from "qrcode.react";
+import { generateMyQr, getSessionStatus, verifyMyQr, heartbeat, recordEvent } from "../../services/attendance.service";
+import { useRegistration } from "../../hooks/useRegistration";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 function SessionRow({ session }: { session: any }) {
-  const [accessState, setAccessState] = useState<{ access: string; meetingUrl?: string; monitoringSession?: any } | null>(null);
-  const [qrState, setQrState] = useState<{ qrPayload: string; expiresIn: number; sessionId: string } | null>(null);
+  const [accessState, setAccessState] = useState<{ access: string; meetingUrl?: string | null; monitoringSession?: any } | null>(null);
+  const [qrState, setQrState] = useState<{ qrPayload: string; expiresIn: number; sessionId: string; passcode: string; scanUrl?: string } | null>(null);
   const [verifyToken, setVerifyToken] = useState("");
   
   const fetchAccess = async () => {
@@ -24,11 +27,38 @@ function SessionRow({ session }: { session: any }) {
     }
   };
 
+  const checkStatus = async () => {
+    try {
+      const status = await getSessionStatus(session.id);
+      if (status.status === "PRESENT") {
+        fetchAccess();
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
   useEffect(() => {
     if (session.status !== "SCHEDULED") {
       fetchAccess();
     }
   }, [session.status]);
+
+  // Polling for Check-in Status (while not yet checked in)
+  useEffect(() => {
+    if (session.status === "LIVE" && (!accessState || accessState.access !== "GRANTED")) {
+      const interval = setInterval(checkStatus, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [session.status, accessState]);
+
+  // Polling for Meeting Going Live (while checked in but waiting for organizer)
+  useEffect(() => {
+    if (session.status === "LIVE" && accessState?.access === "GRANTED" && !accessState?.meetingUrl) {
+      const interval = setInterval(fetchAccess, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [session.status, accessState?.access, accessState?.meetingUrl]);
 
   // Heartbeat & Fullscreen Monitoring
   useEffect(() => {
@@ -68,11 +98,25 @@ function SessionRow({ session }: { session: any }) {
     onSuccess: (data) => setQrState(data)
   });
 
+  // Rotate QR automatically when expires
+  useEffect(() => {
+    if (qrState) {
+      const ms = Math.max(1000, qrState.expiresIn * 1000);
+      const timeout = setTimeout(() => generateQrMutation.mutate(), ms);
+      return () => clearTimeout(timeout);
+    }
+  }, [qrState]);
+
   const verifyQrMutation = useMutation({
     mutationFn: () => verifyMyQr(session.id, verifyToken),
     onSuccess: () => fetchAccess(),
-    onError: () => alert("Invalid or Expired Token!")
+    onError: () => alert("Invalid or Expired Passcode!")
   });
+
+  const getScanUrl = () => {
+    if (!qrState) return "";
+    return qrState.scanUrl || `${window.location.origin}/scan?sessionId=${session.id}&token=${qrState.qrPayload}`;
+  };
 
   return (
     <div className="p-4 bg-[#FFEDDB]/40 border border-[#DFC1B0]/60 rounded-lg flex flex-col gap-3 text-xs">
@@ -97,10 +141,18 @@ function SessionRow({ session }: { session: any }) {
             <TraceBadge variant="cream">Completed</TraceBadge>
           )}
 
-          {session.status === "LIVE" && !accessState?.meetingUrl && !qrState && (
+          {session.status === "LIVE" && !accessState?.meetingUrl && !qrState && accessState?.access !== "GRANTED" && (
             <TraceButton size="sm" onClick={() => generateQrMutation.mutate()} disabled={generateQrMutation.isPending}>
               Get Attendance QR
             </TraceButton>
+          )}
+
+          {/* Checked in but meeting not yet live */}
+          {accessState?.access === "GRANTED" && !accessState?.meetingUrl && session.status === "LIVE" && (
+            <div className="flex items-center gap-2 text-xs text-[#5F524B]">
+              <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></span>
+              <span>Checked In — Waiting for organizer to start meeting</span>
+            </div>
           )}
           
           {accessState?.access === "GRANTED" && accessState?.meetingUrl && (
@@ -113,23 +165,35 @@ function SessionRow({ session }: { session: any }) {
         </div>
       </div>
       
-      {qrState && !accessState?.meetingUrl && (
-        <div className="mt-2 p-3 bg-white border border-[#DFC1B0] rounded flex flex-col gap-2">
-          <p className="font-bold text-[#BF9270]">Your Personal QR Token:</p>
-          <p className="font-mono text-lg">{qrState.qrPayload}</p>
-          <p className="text-[#5F524B] text-[10px]">Enter this token below to verify and unlock meeting access.</p>
-          
-          <div className="flex gap-2 items-center mt-2">
-            <input 
-              type="text" 
-              placeholder="Enter token..." 
-              value={verifyToken} 
-              onChange={(e) => setVerifyToken(e.target.value)}
-              className="border border-[#DFC1B0] rounded px-2 py-1 text-sm outline-none"
-            />
-            <TraceButton size="sm" variant="secondary" onClick={() => verifyQrMutation.mutate()} disabled={!verifyToken || verifyQrMutation.isPending}>
-              Verify & Unlock
-            </TraceButton>
+      {qrState && (!accessState || accessState.access !== "GRANTED") && (
+        <div className="mt-2 p-3 bg-white border border-[#DFC1B0] rounded flex flex-col md:flex-row gap-6 items-center">
+          <div className="flex-shrink-0 bg-white p-2 border border-[#DFC1B0] rounded shadow-sm">
+            <QRCodeSVG value={getScanUrl()} size={150} level="M" />
+          </div>
+          <div className="flex flex-col gap-2 flex-grow text-center md:text-left">
+            <p className="font-bold text-lg text-[#1A1412]">Scan to Check In</p>
+            <p className="text-[#5F524B] text-sm">Use your smartphone camera to scan this QR code. The meeting link will unlock automatically upon successful check-in.</p>
+            <div className="mt-2 text-sm text-[#BF9270] flex flex-col gap-1">
+              <span className="font-semibold uppercase tracking-wider text-xs">Fallback Passcode</span>
+              <span className="font-mono text-xl text-[#1A1412] font-bold tracking-widest">{qrState.passcode}</span>
+            </div>
+            
+            <div className="flex flex-col gap-2 items-center md:items-start mt-2 border-t border-[#DFC1B0]/30 pt-3">
+              <p className="text-[10px] text-[#5F524B]">Manual Entry (if phone scanning fails):</p>
+              <div className="flex gap-2 w-full max-w-xs">
+                <input 
+                  type="text" 
+                  placeholder="Enter 6-char passcode..." 
+                  maxLength={6}
+                  value={verifyToken} 
+                  onChange={(e) => setVerifyToken(e.target.value.toUpperCase())}
+                  className="border border-[#DFC1B0] rounded px-3 py-1.5 text-sm outline-none flex-grow uppercase"
+                />
+                <TraceButton size="sm" variant="secondary" onClick={() => verifyQrMutation.mutate()} disabled={verifyToken.length !== 6 || verifyQrMutation.isPending}>
+                  Verify
+                </TraceButton>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -149,14 +213,25 @@ function SessionRow({ session }: { session: any }) {
     </div>
   );
 }
-
 export function WorkshopLearningPage() {
   const { id = "" } = useParams();
-  const materials = useQuery({ queryKey: ["materials", id], queryFn: () => listMaterials(id), enabled: Boolean(id) });
-  const sessions = useQuery({ queryKey: ["sessions", id], queryFn: () => listSessions(id), enabled: Boolean(id) });
+  const navigate = useNavigate();
+  const registrations = useRegistration();
+  const availableWorkshops = registrations.data?.map(reg => reg.workshop!).filter(Boolean) ?? [];
+
+  const materials = useQuery({ queryKey: ["materials", id], queryFn: () => listMaterials(id), enabled: !!id });
+  const sessions = useQuery({ queryKey: ["sessions", id], queryFn: () => listSessions(id), enabled: !!id });
 
   return (
     <ParticipantLayout title="Interactive Learning Workspace">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={availableWorkshops as any} 
+          selectedId={id} 
+          onSelect={(newId) => navigate(`/participant/workshops/${newId}/learn`)} 
+          isLoading={registrations.isLoading} 
+        />
+      </div>
       <div className="flex flex-col gap-8">
         <p className="font-sans text-xs text-[#5F524B]">
           Access session details, live meeting links, learning materials, and course resources.

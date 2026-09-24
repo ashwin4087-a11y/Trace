@@ -21,7 +21,8 @@ export const evaluateEligibility = asyncHandler(async (req, res) => {
 });
 
 export const mine = asyncHandler(async (req, res) => {
-  res.json({ success: true, data: await certificates.listMine(req.user!.id) });
+  const workshopId = typeof req.query.workshopId === "string" ? req.query.workshopId : undefined;
+  res.json({ success: true, data: await certificates.listMine(req.user!.id, workshopId) });
 });
 
 export const byWorkshop = asyncHandler(async (req, res) => {

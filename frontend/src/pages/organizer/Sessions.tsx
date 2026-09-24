@@ -4,22 +4,25 @@ import { OrganizerLayout } from "../../components/layout/OrganizerLayout";
 import { ErrorState } from "../../components/common/ErrorState";
 import { Input } from "../../components/common/Input";
 import { Loader } from "../../components/common/Loader";
+import { errorText } from "../../lib/errors";
 import { TraceBadge } from "../../components/trace/TraceBadge";
 import { TraceButton } from "../../components/trace/TraceButton";
 import { useWorkshopList } from "../../hooks/useWorkshop";
-import { createSession, issueQr, listSessions } from "../../services/session.service";
+import { createSession, issueQr, listSessions, updateSession, meetingStart, meetingEnd, endSession } from "../../services/session.service";
+import { useWorkshopContext } from "../../hooks/useWorkshopContext";
+import { WorkshopSelector } from "../../components/common/WorkshopSelector";
 
 import { QRCodeSVG } from "qrcode.react";
 
 export function OrganizerSessionsPage() {
-  const workshops = useWorkshopList();
-  const workshopId = workshops.data?.[0]?.id ?? "";
+  const workshops = useWorkshopList({ mine: 1 });
+  const { workshopId, setWorkshopId } = useWorkshopContext(workshops.data);
   const client = useQueryClient();
 
   const sessions = useQuery({
     queryKey: ["sessions", workshopId],
     queryFn: () => listSessions(workshopId),
-    enabled: Boolean(workshopId),
+    enabled: !!workshopId,
   });
 
   const [title, setTitle] = useState("Interactive Lecture & Lab");
@@ -47,6 +50,14 @@ export function OrganizerSessionsPage() {
 
   return (
     <OrganizerLayout title="Faculty Session Scheduling">
+      <div className="mb-6">
+        <WorkshopSelector 
+          workshops={workshops.data} 
+          selectedId={workshopId} 
+          onSelect={setWorkshopId} 
+          isLoading={workshops.isLoading} 
+        />
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Scheduled Sessions List */}
         <div className="lg:col-span-7 flex flex-col gap-6">
@@ -57,7 +68,7 @@ export function OrganizerSessionsPage() {
                   Scheduled Milestones
                 </span>
                 <h3 className="font-serif text-xl font-semibold text-[#1A1412] mt-0.5">
-                  {workshops.data?.[0]?.title || "Active Workshop Sessions"}
+                  Active Workshop Sessions
                 </h3>
               </div>
               <TraceBadge variant="cream">{sessions.data?.length ?? 0} Sessions</TraceBadge>
@@ -88,28 +99,101 @@ export function OrganizerSessionsPage() {
                 {sessions.data.map((session, idx) => (
                   <div
                     key={session.id}
-                    className="p-4 bg-[#FFEDDB]/40 border border-[#DFC1B0]/60 rounded-lg flex items-center justify-between gap-3 text-xs"
+                    className="p-4 bg-[#FAFAFA] border border-[#DFC1B0] rounded-xl flex flex-col gap-4 text-xs shadow-sm"
                   >
-                    <div>
-                      <span className="font-bold text-[#BF9270] uppercase">Session {idx + 1}</span>
-                      <h4 className="font-semibold text-sm text-[#1A1412] mt-0.5">{session.title}</h4>
-                      <p className="text-[#5F524B] mt-0.5 flex gap-2">
-                        <span>{session.startTime ? new Date(session.startTime).toLocaleString() : "TBD"}</span>
-                        <span className="text-[#BF9270] font-semibold">{session.mode}</span>
-                      </p>
+                    <div className="flex justify-between items-start border-b border-[#DFC1B0]/40 pb-3">
+                      <div>
+                        <span className="font-bold text-[#BF9270] uppercase">Session {session.sessionNumber || idx + 1}</span>
+                        <h4 className="font-serif text-lg font-semibold text-[#1A1412] mt-0.5">{session.title}</h4>
+                        <p className="text-[#5F524B] mt-0.5 flex gap-2">
+                          <span>{session.startTime ? new Date(session.startTime).toLocaleString() : "TBD"}</span>
+                          <span className="text-[#BF9270] font-semibold">{session.mode}</span>
+                        </p>
+                      </div>
+                      <div className="flex flex-col gap-2 items-end">
+                        <TraceBadge variant={session.status === "LIVE" ? "terracotta" : session.status === "COMPLETED" ? "cream" : "default"}>
+                          {session.status}
+                        </TraceBadge>
+                        {session.status === "LIVE" && (
+                          <TraceButton
+                            variant="secondary"
+                            size="sm"
+                            icon="qr_code_2"
+                            onClick={async () => {
+                              const { token } = await issueQr(session.id);
+                              setActiveToken({ token, sessionId: session.id });
+                            }}
+                          >
+                            Show Check-in QR
+                          </TraceButton>
+                        )}
+                      </div>
                     </div>
 
-                    <TraceButton
-                      variant="secondary"
-                      size="sm"
-                      icon="qr_code_2"
-                      onClick={async () => {
-                        const { token } = await issueQr(session.id);
-                        setActiveToken({ token, sessionId: session.id });
-                      }}
-                    >
-                      Issue Token
-                    </TraceButton>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Session Status Control */}
+                      <div className="bg-[#FFFFFF] p-3 rounded-lg border border-[#DFC1B0]/40 flex flex-col gap-2">
+                        <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-[#5F524B]">Session Lifecycle</span>
+                        <div className="flex items-center gap-2 mt-1">
+                          {session.status === "SCHEDULED" && (
+                            <TraceButton size="sm" onClick={async () => {
+                              await updateSession(session.id, { status: "LIVE" });
+                              client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                            }}>
+                              Start Session
+                            </TraceButton>
+                          )}
+                          {session.status === "LIVE" && (
+                            <TraceButton size="sm" variant="danger" onClick={async () => {
+                              if (confirm("Are you sure you want to end this session? This will finalize attendance and close the meeting.")) {
+                                await endSession(session.id);
+                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                              }
+                            }}>
+                              End Session
+                            </TraceButton>
+                          )}
+                          {session.status === "COMPLETED" && (
+                            <span className="text-[#5F524B] italic">Session ended and attendance finalized.</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Meeting Control */}
+                      {(session.mode === "ONLINE" || session.mode === "HYBRID") && session.status !== "COMPLETED" && (
+                        <div className="bg-[#FFFFFF] p-3 rounded-lg border border-[#DFC1B0]/40 flex flex-col gap-2">
+                          <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-[#5F524B]">Virtual Meeting</span>
+                          <div className="flex items-center justify-between mt-1 gap-2">
+                            <span className="flex items-center gap-1.5 font-semibold text-sm">
+                              <span className={`w-2 h-2 rounded-full ${session.meetingLive ? "bg-green-500 animate-pulse" : "bg-gray-300"}`}></span>
+                              {session.meetingLive ? "LIVE" : "Not Live"}
+                            </span>
+                            
+                            {session.status === "LIVE" && !session.meetingLive && (
+                              <TraceButton size="sm" onClick={async () => {
+                                await meetingStart(session.id);
+                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                              }}>
+                                Make Meeting Live
+                              </TraceButton>
+                            )}
+                            
+                            {session.status === "LIVE" && session.meetingLive && (
+                              <TraceButton size="sm" variant="secondary" onClick={async () => {
+                                await meetingEnd(session.id);
+                                client.invalidateQueries({ queryKey: ["sessions", workshopId] });
+                              }}>
+                                Hide Meeting Link
+                              </TraceButton>
+                            )}
+                            
+                            {session.status === "SCHEDULED" && (
+                              <span className="text-[10px] text-[#5F524B] italic">Start session first</span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -188,7 +272,7 @@ export function OrganizerSessionsPage() {
               />
             )}
 
-            {create.isError ? <ErrorState message="Failed to create session." /> : null}
+            {create.isError ? <ErrorState message={errorText(create.error)} /> : null}
 
             <TraceButton type="submit" disabled={!workshopId || create.isPending} icon="add">
               {create.isPending ? "Adding Session..." : "Add Session"}

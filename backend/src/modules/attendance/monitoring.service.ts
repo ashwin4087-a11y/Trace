@@ -6,6 +6,9 @@ import { sha256 } from "../../shared/utils/tokens";
 
 import { emitWorkshopDomainEvent } from "../workshops/workshop.events";
 
+import jwt from "jsonwebtoken";
+import { env } from "../../config/environment";
+
 export async function generateMyQr(user: AuthUser, sessionId: string) {
   const session = await prisma.workshopSession.findUnique({
     where: { id: sessionId },
@@ -25,64 +28,108 @@ export async function generateMyQr(user: AuthUser, sessionId: string) {
     throw new ApiError(403, "FORBIDDEN", "Attendance has not started yet.");
   }
 
-  // Invalidate any existing unused tokens for this session/user
-  await prisma.personalQrToken.deleteMany({
-    where: { sessionId, userId: user.id, consumedAt: null }
-  });
+  // Generate 30s window timestamp
+  const now = Date.now();
+  const windowMs = 30 * 1000;
+  const windowId = Math.floor(now / windowMs);
 
-  const rawToken = crypto.randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + 30 * 1000); // 30 seconds
+  const payload = {
+    sessionId,
+    purpose: "ATTENDANCE_CHECKIN",
+    window: windowId,
+  };
 
-  await prisma.personalQrToken.create({
-    data: {
-      tokenHash: sha256(rawToken),
-      sessionId,
-      registrationId: registration.id,
-      userId: user.id,
-      expiresAt,
-    }
-  });
+  const jwtToken = jwt.sign(payload, env.jwtSecret, { expiresIn: "30s" });
+  
+  // Passcode fallback: 6 unambiguous characters derived from HMAC
+  const hmac = crypto.createHmac("sha256", env.jwtSecret);
+  hmac.update(`${sessionId}:${windowId}`);
+  const passcode = hmac.digest("hex").slice(0, 6).toUpperCase();
+
+  const expiresAt = new Date((windowId + 1) * windowMs);
 
   return {
     sessionId,
     expiresAt: expiresAt.toISOString(),
-    expiresIn: 30,
-    qrPayload: rawToken
+    expiresIn: Math.max(0, Math.floor((expiresAt.getTime() - now) / 1000)),
+    qrPayload: jwtToken,
+    passcode
   };
 }
+
 
 export async function verifyMyQr(user: AuthUser, input: { sessionId: string; token: string }) {
   const session = await prisma.workshopSession.findUnique({ where: { id: input.sessionId } });
   if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
   if (session.status !== "LIVE") throw new ApiError(403, "FORBIDDEN", "Attendance has not been started.");
 
-  const registration = await prisma.registration.findUnique({
+  let registration = await prisma.registration.findUnique({
     where: { workshopId_userId: { workshopId: session.workshopId, userId: user.id } }
   });
-  if (!registration || registration.status !== "CONFIRMED") {
+
+  if (!registration) {
+    // Seamless QR flow: auto-register the participant if they scan the QR code and are authenticated
+    registration = await prisma.registration.create({
+      data: {
+        workshopId: session.workshopId,
+        userId: user.id,
+        status: "CONFIRMED",
+        confirmedAt: new Date(),
+      }
+    });
+  } else if (registration.status !== "CONFIRMED") {
     throw new ApiError(403, "FORBIDDEN", "Registration is not confirmed.");
   }
 
-  const tokenHash = sha256(input.token);
-  let isValidMasterToken = false;
+  // --- Token Verification ---
+  // Priority 1: Hash-based token (issued by organizer via POST /sessions/:id/qr)
+  // The organizer QR uses sha256(randomToken) stored in session.qrTokenHash.
+  // This token does NOT expire — the session itself being LIVE is the gate.
+  const isHashToken = !input.token.includes(".") && input.token.length > 6;
+  const isPasscode = input.token.length === 6 && !input.token.includes(".");
 
-  if (session.qrTokenHash === tokenHash) {
-    isValidMasterToken = true;
-  } else {
-    // Fallback to personal token check
-    const qrToken = await prisma.personalQrToken.findUnique({ where: { tokenHash } });
-    if (!qrToken) throw new ApiError(404, "NOT_FOUND", "Invalid QR code.");
-    if (qrToken.userId !== user.id) throw new ApiError(403, "FORBIDDEN", "QR code belongs to another participant.");
-    if (qrToken.sessionId !== input.sessionId) throw new ApiError(400, "BAD_REQUEST", "QR code is for a different session.");
-    if (qrToken.registrationId !== registration.id) throw new ApiError(403, "FORBIDDEN", "Registration mismatch.");
-    if (qrToken.consumedAt) throw new ApiError(403, "FORBIDDEN", "This QR code has already been used.");
-    if (new Date() > qrToken.expiresAt) throw new ApiError(410, "GONE", "QR code expired. Please generate a new QR.");
-
-    // Mark token consumed
-    await prisma.personalQrToken.update({
-      where: { id: qrToken.id },
-      data: { consumedAt: new Date() }
+  if (isHashToken) {
+    // Re-fetch the session to get qrTokenHash (session was fetched above without it)
+    const sessionWithHash = await prisma.workshopSession.findUnique({
+      where: { id: input.sessionId },
+      select: { qrTokenHash: true }
     });
+    const tokenHash = sha256(input.token);
+    if (!sessionWithHash?.qrTokenHash || sessionWithHash.qrTokenHash !== tokenHash) {
+      throw new ApiError(400, "BAD_REQUEST", "Invalid or expired QR code");
+    }
+  } else if (isPasscode) {
+    // Priority 2: 6-char HMAC passcode (rotating 30s windows)
+    const now = Date.now();
+    const windowMs = 30 * 1000;
+    const currentWindowId = Math.floor(now / windowMs);
+
+    const generatePasscode = (windowId: number) => {
+      const hmac = crypto.createHmac("sha256", env.jwtSecret);
+      hmac.update(`${input.sessionId}:${windowId}`);
+      return hmac.digest("hex").slice(0, 6).toUpperCase();
+    };
+
+    const expectedCurrent = generatePasscode(currentWindowId);
+    const expectedPrevious = generatePasscode(currentWindowId - 1);
+    const provided = input.token.toUpperCase();
+    
+    const isValid = (
+      crypto.timingSafeEqual(Buffer.from(provided.padEnd(6)), Buffer.from(expectedCurrent.padEnd(6))) ||
+      crypto.timingSafeEqual(Buffer.from(provided.padEnd(6)), Buffer.from(expectedPrevious.padEnd(6)))
+    );
+    if (!isValid) {
+      throw new ApiError(400, "BAD_REQUEST", "Invalid or expired passcode");
+    }
+  } else {
+    // Priority 3: Short-lived JWT (participant-specific, generated by /sessions/:id/my-attendance-qr)
+    try {
+      const payload = jwt.verify(input.token, env.jwtSecret) as any;
+      if (payload.sessionId !== input.sessionId) throw new Error("Session mismatch");
+      if (payload.purpose !== "ATTENDANCE_CHECKIN") throw new Error("Invalid purpose");
+    } catch (err) {
+      throw new ApiError(400, "BAD_REQUEST", "Invalid or expired QR code");
+    }
   }
 
   // Upsert Attendance
@@ -136,7 +183,8 @@ export async function verifyMyQr(user: AuthUser, input: { sessionId: string; tok
       verifiedAt: attendance.recordedAt
     },
     meetingAccess: {
-      status: "UNLOCKED"
+      status: session.meetingUrl ? "UNLOCKED" : "WAITING_FOR_HOST",
+      meetingUrl: session.meetingUrl,
     },
     monitoringSession: {
       id: monitoring.id,
@@ -205,4 +253,33 @@ export async function endMonitoring(user: AuthUser, monitoringId: string) {
       endedAt: new Date(),
     }
   });
+}
+
+export async function getSessionStatus(user: AuthUser, sessionId: string) {
+  const session = await prisma.workshopSession.findUnique({ where: { id: sessionId } });
+  if (!session) throw new ApiError(404, "NOT_FOUND", "Session not found");
+
+  const registration = await prisma.registration.findUnique({
+    where: { workshopId_userId: { workshopId: session.workshopId, userId: user.id } }
+  });
+  if (!registration || registration.status !== "CONFIRMED") {
+    throw new ApiError(403, "FORBIDDEN", "Registration is not confirmed");
+  }
+
+  const attendance = await prisma.attendance.findUnique({
+    where: { sessionId_registrationId: { sessionId, registrationId: registration.id } }
+  });
+
+  const monitoring = attendance ? await prisma.attendanceMonitoringSession.findUnique({
+    where: { attendanceId: attendance.id }
+  }) : null;
+
+  return {
+    status: attendance?.status || "PENDING",
+    recordedAt: attendance?.recordedAt,
+    monitoringSession: monitoring ? {
+      id: monitoring.id,
+      status: monitoring.status
+    } : null
+  };
 }

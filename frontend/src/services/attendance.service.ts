@@ -22,17 +22,17 @@ export async function checkIn(token: string) {
 
 // AUREX 2026 QR & Monitoring
 export async function generateMyQr(sessionId: string) {
-  return unwrap<{ qrPayload: string; expiresIn: number; sessionId: string; passcode: string; scanUrl?: string }>(await api.get(`/sessions/${sessionId}/my-attendance-qr`));
+  return unwrap<{ qrPayload: string; expiresIn: number; sessionId: string; passcode: string; scanUrl?: string }>(await api.get(`/attendance/sessions/${sessionId}/my-attendance-qr`));
 }
 export async function getSessionStatus(sessionId: string) {
-  return unwrap<{ status: string; recordedAt?: string; monitoringSession?: { id: string, status: string } }>(await api.get(`/sessions/${sessionId}/status`));
+  return unwrap<{ status: string; recordedAt?: string; monitoringSession?: { id: string, status: string } }>(await api.get(`/attendance/sessions/${sessionId}/status`));
 }
 export async function verifyMyQr(sessionId: string, token: string) {
   return unwrap<any>(await api.post(`/attendance/qr/verify`, { sessionId, token }));
 }
 export async function heartbeat(monitoringSessionId: string) {
-  return unwrap<any>(await api.post(`/attendance-sessions/${monitoringSessionId}/heartbeat`));
+  return unwrap<any>(await api.post(`/attendance/attendance-sessions/${monitoringSessionId}/heartbeat`));
 }
 export async function recordEvent(monitoringSessionId: string, type: string) {
-  return unwrap<any>(await api.post(`/attendance-sessions/${monitoringSessionId}/event`, { type, clientTime: new Date().toISOString() }));
+  return unwrap<any>(await api.post(`/attendance/attendance-sessions/${monitoringSessionId}/event`, { type, clientTime: new Date().toISOString() }));
 }

@@ -61,6 +61,10 @@ export async function getSessionAccess(user: AuthUser, sessionId: string) {
       throw new ApiError(403, "FORBIDDEN", "Only confirmed participants can access this session");
     }
 
+    if (session.status === "COMPLETED" || session.status === "CANCELLED") {
+      return { access: "LOCKED", reason: "SESSION_ENDED" };
+    }
+
     // Check QR attendance monitoring session
     const monitoring = await prisma.attendanceMonitoringSession.findFirst({
       where: { sessionId, userId: user.id, status: "ACTIVE" }

@@ -12,6 +12,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { generateMyQr, getSessionStatus, verifyMyQr, heartbeat, recordEvent } from "../../services/attendance.service";
 import { useRegistration } from "../../hooks/useRegistration";
 import { WorkshopSelector } from "../../components/common/WorkshopSelector";
+import { errorText } from "../../lib/errors";
 
 function SessionRow({ session }: { session: any }) {
   const [accessState, setAccessState] = useState<{ access: string; meetingUrl?: string | null; monitoringSession?: any } | null>(null);
@@ -98,6 +99,18 @@ function SessionRow({ session }: { session: any }) {
     onSuccess: (data) => setQrState(data)
   });
 
+  useEffect(() => {
+    if (
+      session.status === "LIVE" &&
+      !qrState &&
+      !accessState?.access &&
+      !generateQrMutation.isPending &&
+      !generateQrMutation.isError
+    ) {
+      generateQrMutation.mutate();
+    }
+  }, [session.status, qrState, accessState?.access]);
+
   // Rotate QR automatically when expires
   useEffect(() => {
     if (qrState) {
@@ -147,6 +160,10 @@ function SessionRow({ session }: { session: any }) {
             </TraceButton>
           )}
 
+          {generateQrMutation.isError && (
+            <p className="mt-2 text-xs text-red-600">{errorText(generateQrMutation.error)}</p>
+          )}
+
           {/* Checked in but meeting not yet live */}
           {accessState?.access === "GRANTED" && !accessState?.meetingUrl && session.status === "LIVE" && (
             <div className="flex items-center gap-2 text-xs text-[#5F524B]">
@@ -155,7 +172,7 @@ function SessionRow({ session }: { session: any }) {
             </div>
           )}
           
-          {accessState?.access === "GRANTED" && accessState?.meetingUrl && (
+          {session.status !== "COMPLETED" && session.status !== "CANCELLED" && accessState?.access === "GRANTED" && accessState?.meetingUrl && (
             <a href={accessState.meetingUrl} target="_blank" rel="noopener noreferrer">
               <TraceButton size="sm" icon="video_camera_front">
                 Join Virtual Session
